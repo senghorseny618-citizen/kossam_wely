@@ -1,0 +1,39 @@
+// Dans la fonction producteurApp(), modifiez les références :
+
+loadProducts() {
+    if (window.javaApp && window.javaApp.getMyProducts) {
+        try {
+            const productsJson = window.javaApp.getMyProducts();
+            this.mesProduits = JSON.parse(productsJson);
+            // Assurez-vous que les champs correspondent
+            this.mesProduits = this.mesProduits.map(p => ({
+                id_produit: p.id_produit || p.id,
+                nom_produit: p.nom_produit || p.nom,
+                description: p.description,
+                prix: p.prix,
+                stock: p.stock,
+                unite: p.unite,
+                disponible: p.disponible
+            }));
+            this.stats.totalProduits = this.mesProduits.length;
+        } catch(e) { 
+            console.error('Erreur chargement produits:', e);
+            this.mesProduits = [];
+        }
+    }
+},
+
+loadOrders() {
+    if (window.javaApp && window.javaApp.getMyOrders) {
+        try {
+            const ordersJson = window.javaApp.getMyOrders();
+            this.commandesRecues = JSON.parse(ordersJson);
+            this.stats.totalCommandes = this.commandesRecues.length;
+            this.recentesCommandes = [...this.commandesRecues].slice(0, 5);
+            this.stats.ca = this.commandesRecues.reduce((sum, cmd) => sum + (cmd.montant_total || 0), 0);
+        } catch(e) { 
+            console.error('Erreur chargement commandes:', e);
+            this.commandesRecues = [];
+        }
+    }
+},

@@ -1,0 +1,680 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - Kossam Welli</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Alpine.js -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        [x-cloak] { display: none !important; }
+        .transition-all { transition: all 0.3s ease; }
+        .card-hover:hover { transform: translateY(-4px); box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1); }
+    </style>
+</head>
+<body class="bg-gray-100" x-data="adminApp()" x-init="init()" x-cloak>
+
+    <!-- Navigation -->
+    <nav class="bg-white shadow-lg sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center">
+                    <span class="text-3xl mr-2">🥛</span>
+                    <span class="font-bold text-xl text-indigo-600">Kossam Welli - Administration</span>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <!-- Onglets -->
+                    <div class="hidden md:flex space-x-1">
+                        <button @click="activeTab = 'dashboard'" 
+                                :class="activeTab === 'dashboard' ? 'text-indigo-600 border-b-2 border-indigo-600' : 'text-gray-600 hover:text-indigo-600'"
+                                class="px-3 py-2 text-sm font-medium transition-colors">
+                            <i class="fas fa-chart-line mr-1"></i> Dashboard
+                        </button>
+                        <button @click="activeTab = 'utilisateurs'"
+                                :class="activeTab === 'utilisateurs' ? 'text-indigo-600 border-b-2 border-indigo-600' : 'text-gray-600 hover:text-indigo-600'"
+                                class="px-3 py-2 text-sm font-medium transition-colors">
+                            <i class="fas fa-users mr-1"></i> Utilisateurs
+                        </button>
+                        <button @click="activeTab = 'produits'"
+                                :class="activeTab === 'produits' ? 'text-indigo-600 border-b-2 border-indigo-600' : 'text-gray-600 hover:text-indigo-600'"
+                                class="px-3 py-2 text-sm font-medium transition-colors">
+                            <i class="fas fa-boxes mr-1"></i> Produits
+                        </button>
+                        <button @click="activeTab = 'commandes'"
+                                :class="activeTab === 'commandes' ? 'text-indigo-600 border-b-2 border-indigo-600' : 'text-gray-600 hover:text-indigo-600'"
+                                class="px-3 py-2 text-sm font-medium transition-colors">
+                            <i class="fas fa-truck mr-1"></i> Commandes
+                        </button>
+                        <button @click="activeTab = 'stats'"
+                                :class="activeTab === 'stats' ? 'text-indigo-600 border-b-2 border-indigo-600' : 'text-gray-600 hover:text-indigo-600'"
+                                class="px-3 py-2 text-sm font-medium transition-colors">
+                            <i class="fas fa-chart-bar mr-1"></i> Statistiques
+                        </button>
+                    </div>
+
+                    <!-- Profil -->
+                    <div class="relative" x-data="{ open: false }">
+                        <button @click="open = !open" class="flex items-center space-x-2 text-gray-700 hover:text-indigo-600">
+                            <i class="fas fa-user-shield text-2xl"></i>
+                            <span class="text-sm font-medium" x-text="admin.nom || 'Admin'"></span>
+                            <i class="fas fa-chevron-down text-xs"></i>
+                        </button>
+                        <div x-show="open" @click.away="open = false" 
+                             class="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg py-2 z-50"
+                             x-transition>
+                            <button @click="logout()" class="w-full text-left px-4 py-2 text-red-600 hover:bg-red-50">
+                                <i class="fas fa-sign-out-alt mr-2"></i> Déconnexion
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        
+        <!-- DASHBOARD -->
+        <div x-show="activeTab === 'dashboard'" x-transition>
+            <h1 class="text-3xl font-bold text-gray-800 mb-6">Tableau de bord</h1>
+            
+            <!-- Cartes statistiques -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                <div class="bg-white rounded-xl shadow-md p-6 border-l-4 border-indigo-500 card-hover transition-all">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-gray-500 text-sm">Utilisateurs</p>
+                            <p class="text-3xl font-bold" x-text="stats.totalUsers">0</p>
+                        </div>
+                        <i class="fas fa-users text-4xl text-indigo-500 opacity-50"></i>
+                    </div>
+                </div>
+                <div class="bg-white rounded-xl shadow-md p-6 border-l-4 border-green-500 card-hover transition-all">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-gray-500 text-sm">Producteurs</p>
+                            <p class="text-3xl font-bold" x-text="stats.totalProducteurs">0</p>
+                        </div>
+                        <i class="fas fa-tractor text-4xl text-green-500 opacity-50"></i>
+                    </div>
+                </div>
+                <div class="bg-white rounded-xl shadow-md p-6 border-l-4 border-yellow-500 card-hover transition-all">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-gray-500 text-sm">Produits</p>
+                            <p class="text-3xl font-bold" x-text="stats.totalProduits">0</p>
+                        </div>
+                        <i class="fas fa-box text-4xl text-yellow-500 opacity-50"></i>
+                    </div>
+                </div>
+                <div class="bg-white rounded-xl shadow-md p-6 border-l-4 border-purple-500 card-hover transition-all">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-gray-500 text-sm">Commandes</p>
+                            <p class="text-3xl font-bold" x-text="stats.totalCommandes">0</p>
+                        </div>
+                        <i class="fas fa-shopping-cart text-4xl text-purple-500 opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Dernières commandes et Top produits -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="bg-white rounded-xl shadow-md p-6">
+                    <h2 class="font-bold text-xl mb-4">📦 Dernières commandes</h2>
+                    <div class="space-y-3">
+                        <template x-for="commande in recentesCommandes" :key="commande.id">
+                            <div class="border-b pb-3">
+                                <div class="flex justify-between">
+                                    <span class="font-medium">Commande #<span x-text="commande.id"></span></span>
+                                    <span class="text-sm text-gray-500" x-text="formatDate(commande.dateCommande)"></span>
+                                </div>
+                                <div class="flex justify-between text-sm text-gray-600 mt-1">
+                                    <span>Client: <span x-text="commande.clientNom"></span></span>
+                                    <span class="font-bold text-indigo-600" x-text="formatPrice(commande.total)"></span>
+                                </div>
+                            </div>
+                        </template>
+                        <div x-show="recentesCommandes.length === 0" class="text-center text-gray-500 py-4">
+                            Aucune commande récente
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-xl shadow-md p-6">
+                    <h2 class="font-bold text-xl mb-4">⭐ Top produits</h2>
+                    <div class="space-y-3">
+                        <template x-for="produit in topProduits" :key="produit.id">
+                            <div class="flex justify-between items-center border-b pb-2">
+                                <span x-text="produit.nom"></span>
+                                <span class="text-sm text-gray-600"><span x-text="produit.vendu"></span> vendus</span>
+                            </div>
+                        </template>
+                        <div x-show="topProduits.length === 0" class="text-center text-gray-500 py-4">
+                            Aucune donnée de vente
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- UTILISATEURS -->
+        <div x-show="activeTab === 'utilisateurs'" x-transition>
+            <div class="flex justify-between items-center mb-6">
+                <h1 class="text-3xl font-bold text-gray-800">👥 Gestion des utilisateurs</h1>
+                <button @click="openUserModal()" class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition">
+                    <i class="fas fa-plus mr-2"></i> Nouvel utilisateur
+                </button>
+            </div>
+
+            <!-- Filtres -->
+            <div class="bg-white rounded-xl shadow-md p-4 mb-6">
+                <div class="flex flex-wrap gap-4">
+                    <input type="text" x-model="searchUser" placeholder="Rechercher par nom ou email..."
+                           class="flex-1 px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <select x-model="roleFilter" class="px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <option value="">Tous les rôles</option>
+                        <option value="CLIENT">Clients</option>
+                        <option value="PRODUCTEUR">Producteurs</option>
+                        <option value="ADMIN">Administrateurs</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Tableau -->
+            <div class="bg-white rounded-xl shadow-md overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full">
+                        <thead class="bg-gray-50 border-b">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-sm font-medium text-gray-500">ID</th>
+                                <th class="px-6 py-3 text-left text-sm font-medium text-gray-500">Nom</th>
+                                <th class="px-6 py-3 text-left text-sm font-medium text-gray-500">Email</th>
+                                <th class="px-6 py-3 text-left text-sm font-medium text-gray-500">Téléphone</th>
+                                <th class="px-6 py-3 text-left text-sm font-medium text-gray-500">Rôle</th>
+                                <th class="px-6 py-3 text-left text-sm font-medium text-gray-500">Statut</th>
+                                <th class="px-6 py-3 text-left text-sm font-medium text-gray-500">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <template x-for="user in filteredUsers" :key="user.id">
+                                <tr class="border-b hover:bg-gray-50">
+                                    <td class="px-6 py-4 text-sm" x-text="user.id"></td>
+                                    <td class="px-6 py-4 text-sm font-medium" x-text="user.nom"></td>
+                                    <td class="px-6 py-4 text-sm" x-text="user.email"></td>
+                                    <td class="px-6 py-4 text-sm" x-text="user.telephone || '-'"></td>
+                                    <td class="px-6 py-4">
+                                        <span :class="{
+                                            'bg-indigo-100 text-indigo-800': user.role === 'ADMIN',
+                                            'bg-green-100 text-green-800': user.role === 'PRODUCTEUR',
+                                            'bg-gray-100 text-gray-800': user.role === 'CLIENT'
+                                        }" class="px-2 py-1 rounded-full text-xs font-medium" x-text="user.role">
+                                        </span>
+                                    </td>
+                                    <td class="px-6 py-4">
+                                        <span :class="user.active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'"
+                                              class="px-2 py-1 rounded-full text-xs font-medium">
+                                            <span x-text="user.active ? 'Actif' : 'Inactif'"></span>
+                                        </span>
+                                    </td>
+                                    <td class="px-6 py-4">
+                                        <button @click="toggleUserStatus(user)" class="text-indigo-600 hover:text-indigo-800 mr-2">
+                                            <i :class="user.active ? 'fas fa-ban' : 'fas fa-check-circle'"></i>
+                                        </button>
+                                        <button @click="deleteUser(user)" class="text-red-600 hover:text-red-800">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                            </template>
+                            <tr x-show="filteredUsers.length === 0">
+                                <td colspan="7" class="px-6 py-8 text-center text-gray-500">
+                                    Aucun utilisateur trouvé
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- PRODUITS -->
+        <div x-show="activeTab === 'produits'" x-transition>
+            <div class="flex justify-between items-center mb-6">
+                <h1 class="text-3xl font-bold text-gray-800">📦 Gestion des produits</h1>
+                <button @click="openProductModal()" class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition">
+                    <i class="fas fa-plus mr-2"></i> Nouveau produit
+                </button>
+            </div>
+
+            <div class="bg-white rounded-xl shadow-md overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full">
+                        <thead class="bg-gray-50 border-b">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-sm font-medium text-gray-500">ID</th>
+                                <th class="px-6 py-3 text-left text-sm font-medium text-gray-500">Nom</th>
+                                <th class="px-6 py-3 text-left text-sm font-medium text-gray-500">Prix</th>
+                                <th class="px-6 py-3 text-left text-sm font-medium text-gray-500">Stock</th>
+                                <th class="px-6 py-3 text-left text-sm font-medium text-gray-500">Unité</th>
+                                <th class="px-6 py-3 text-left text-sm font-medium text-gray-500">Statut</th>
+                                <th class="px-6 py-3 text-left text-sm font-medium text-gray-500">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <template x-for="produit in produits" :key="produit.id">
+                                <tr class="border-b hover:bg-gray-50">
+                                    <td class="px-6 py-4 text-sm" x-text="produit.id"></td>
+                                    <td class="px-6 py-4 text-sm font-medium" x-text="produit.nom"></td>
+                                    <td class="px-6 py-4 text-sm" x-text="formatPrice(produit.prix)"></td>
+                                    <td class="px-6 py-4 text-sm" x-text="produit.stock"></td>
+                                    <td class="px-6 py-4 text-sm" x-text="produit.unite || 'unité'"></td>
+                                    <td class="px-6 py-4">
+                                        <button @click="toggleProductStatus(produit)"
+                                                :class="produit.disponible ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'"
+                                                class="px-2 py-1 rounded-full text-xs font-medium">
+                                            <span x-text="produit.disponible ? 'Disponible' : 'Indisponible'"></span>
+                                        </button>
+                                    </td>
+                                    <td class="px-6 py-4">
+                                        <button @click="deleteProduct(produit)" class="text-red-600 hover:text-red-800">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                            </template>
+                            <tr x-show="produits.length === 0">
+                                <td colspan="7" class="px-6 py-8 text-center text-gray-500">
+                                    Aucun produit trouvé
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- COMMANDES -->
+        <div x-show="activeTab === 'commandes'" x-transition>
+            <h1 class="text-3xl font-bold text-gray-800 mb-6">🚚 Gestion des commandes</h1>
+
+            <div class="space-y-4">
+                <template x-for="commande in commandes" :key="commande.id">
+                    <div class="bg-white rounded-xl shadow-md p-6">
+                        <div class="flex flex-wrap justify-between items-start gap-4 mb-4">
+                            <div>
+                                <h3 class="font-bold text-lg">Commande #<span x-text="commande.id"></span></h3>
+                                <p class="text-sm text-gray-500" x-text="formatDate(commande.dateCommande)"></p>
+                                <p class="text-sm mt-1">Client: <span x-text="commande.clientNom"></span></p>
+                            </div>
+                            <div class="flex items-center gap-3">
+                                <select x-model="commande.statut" @change="updateOrderStatus(commande)"
+                                        class="px-3 py-1 border rounded-lg text-sm">
+                                    <option value="PAYEE">Payée</option>
+                                    <option value="EN_PREPARATION">En préparation</option>
+                                    <option value="EXPEDIEE">Expédiée</option>
+                                    <option value="LIVREE">Livrée</option>
+                                    <option value="ANNULEE">Annulée</option>
+                                </select>
+                                <span class="font-bold text-indigo-600" x-text="formatPrice(commande.total)"></span>
+                            </div>
+                        </div>
+                        <div class="border-t pt-4">
+                            <p class="font-semibold text-gray-700 mb-2">Détails :</p>
+                            <div class="space-y-1">
+                                <template x-for="detail in commande.details" :key="detail.id">
+                                    <div class="flex justify-between text-sm">
+                                        <span x-text="detail.quantite + 'x ' + detail.nomProduit"></span>
+                                        <span x-text="formatPrice(detail.prixUnitaire * detail.quantite)"></span>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+                <div x-show="commandes.length === 0" class="text-center text-gray-500 py-8 bg-white rounded-xl">
+                    Aucune commande
+                </div>
+            </div>
+        </div>
+
+        <!-- STATISTIQUES -->
+        <div x-show="activeTab === 'stats'" x-transition>
+            <h1 class="text-3xl font-bold text-gray-800 mb-6">📊 Statistiques avancées</h1>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="bg-white rounded-xl shadow-md p-6">
+                    <h2 class="font-bold text-lg mb-4">Ventes par mois</h2>
+                    <canvas id="salesChart" class="w-full h-64"></canvas>
+                </div>
+                <div class="bg-white rounded-xl shadow-md p-6">
+                    <h2 class="font-bold text-lg mb-4">Produits les plus vendus</h2>
+                    <canvas id="productsChart" class="w-full h-64"></canvas>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal Ajout Utilisateur -->
+    <div x-show="showUserModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" x-cloak>
+        <div class="bg-white rounded-xl max-w-md w-full mx-4 p-6" @click.away="showUserModal = false">
+            <h3 class="font-bold text-xl mb-4">Nouvel utilisateur</h3>
+            <form @submit.prevent="createUser">
+                <div class="space-y-3">
+                    <input type="text" x-model="newUser.nom" placeholder="Nom complet" required
+                           class="w-full px-3 py-2 border rounded-lg">
+                    <input type="email" x-model="newUser.email" placeholder="Email" required
+                           class="w-full px-3 py-2 border rounded-lg">
+                    <input type="tel" x-model="newUser.telephone" placeholder="Téléphone"
+                           class="w-full px-3 py-2 border rounded-lg">
+                    <input type="password" x-model="newUser.password" placeholder="Mot de passe" required
+                           class="w-full px-3 py-2 border rounded-lg">
+                    <select x-model="newUser.role" class="w-full px-3 py-2 border rounded-lg">
+                        <option value="CLIENT">Client</option>
+                        <option value="PRODUCTEUR">Producteur</option>
+                        <option value="ADMIN">Administrateur</option>
+                    </select>
+                </div>
+                <div class="flex justify-end gap-3 mt-6">
+                    <button type="button" @click="showUserModal = false" class="px-4 py-2 border rounded-lg">Annuler</button>
+                    <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-lg">Créer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Ajout Produit -->
+    <div x-show="showProductModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" x-cloak>
+        <div class="bg-white rounded-xl max-w-md w-full mx-4 p-6" @click.away="showProductModal = false">
+            <h3 class="font-bold text-xl mb-4">Nouveau produit</h3>
+            <form @submit.prevent="createProduct">
+                <div class="space-y-3">
+                    <input type="text" x-model="newProduct.nom" placeholder="Nom du produit" required
+                           class="w-full px-3 py-2 border rounded-lg">
+                    <textarea x-model="newProduct.description" placeholder="Description" rows="2"
+                              class="w-full px-3 py-2 border rounded-lg"></textarea>
+                    <input type="number" step="0.01" x-model="newProduct.prix" placeholder="Prix (€)" required
+                           class="w-full px-3 py-2 border rounded-lg">
+                    <input type="number" x-model="newProduct.stock" placeholder="Stock" required
+                           class="w-full px-3 py-2 border rounded-lg">
+                    <select x-model="newProduct.unite" class="w-full px-3 py-2 border rounded-lg">
+                        <option value="litre">Litre</option>
+                        <option value="kg">Kilogramme</option>
+                        <option value="unité">Unité</option>
+                        <option value="bouteille">Bouteille</option>
+                    </select>
+                </div>
+                <div class="flex justify-end gap-3 mt-6">
+                    <button type="button" @click="showProductModal = false" class="px-4 py-2 border rounded-lg">Annuler</button>
+                    <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-lg">Ajouter</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+    function adminApp() {
+        return {
+            activeTab: 'dashboard',
+            admin: { nom: '', email: '' },
+            users: [],
+            produits: [],
+            commandes: [],
+            stats: { totalUsers: 0, totalProducteurs: 0, totalProduits: 0, totalCommandes: 0 },
+            recentesCommandes: [],
+            topProduits: [],
+            searchUser: '',
+            roleFilter: '',
+            salesChart: null,
+            productsChart: null,
+            showUserModal: false,
+            showProductModal: false,
+            newUser: { nom: '', email: '', telephone: '', password: '', role: 'CLIENT' },
+            newProduct: { nom: '', description: '', prix: 0, stock: 0, unite: 'litre' },
+
+            init() {
+                this.loadAdminData();
+                this.loadUsers();
+                this.loadProducts();
+                this.loadOrders();
+                this.loadStats();
+                
+                this.$watch('activeTab', (tab) => {
+                    if (tab === 'stats') {
+                        setTimeout(() => this.renderCharts(), 100);
+                    }
+                });
+            },
+
+            loadAdminData() {
+                if (window.javaApp && window.javaApp.getCurrentUser) {
+                    try {
+                        const userJson = window.javaApp.getCurrentUser();
+                        this.admin = JSON.parse(userJson);
+                    } catch(e) {
+                        console.error("Erreur chargement admin:", e);
+                    }
+                }
+            },
+
+            loadUsers() {
+                if (window.javaApp && window.javaApp.getAllUsers) {
+                    try {
+                        this.users = JSON.parse(window.javaApp.getAllUsers());
+                    } catch(e) {
+                        console.error("Erreur chargement users:", e);
+                        this.users = [];
+                    }
+                }
+            },
+
+            loadProducts() {
+                if (window.javaApp && window.javaApp.getAllProducts) {
+                    try {
+                        this.produits = JSON.parse(window.javaApp.getAllProducts());
+                    } catch(e) {
+                        console.error("Erreur chargement produits:", e);
+                        this.produits = [];
+                    }
+                }
+            },
+
+            loadOrders() {
+                if (window.javaApp && window.javaApp.getAllOrders) {
+                    try {
+                        this.commandes = JSON.parse(window.javaApp.getAllOrders());
+                    } catch(e) {
+                        console.error("Erreur chargement commandes:", e);
+                        this.commandes = [];
+                    }
+                }
+            },
+
+            loadStats() {
+                this.stats.totalUsers = this.users.length;
+                this.stats.totalProducteurs = this.users.filter(u => u.role === 'PRODUCTEUR').length;
+                this.stats.totalProduits = this.produits.length;
+                this.stats.totalCommandes = this.commandes.length;
+                
+                this.recentesCommandes = [...this.commandes].slice(0, 5);
+                
+                // Calcul top produits
+                const productSales = {};
+                this.commandes.forEach(cmd => {
+                    if (cmd.details) {
+                        cmd.details.forEach(detail => {
+                            if (!productSales[detail.nomProduit]) {
+                                productSales[detail.nomProduit] = 0;
+                            }
+                            productSales[detail.nomProduit] += detail.quantite;
+                        });
+                    }
+                });
+                this.topProduits = Object.entries(productSales)
+                    .map(([nom, vendu]) => ({ nom, vendu }))
+                    .sort((a, b) => b.vendu - a.vendu)
+                    .slice(0, 5);
+            },
+
+            get filteredUsers() {
+                return this.users.filter(user => {
+                    const matchSearch = user.nom.toLowerCase().includes(this.searchUser.toLowerCase()) ||
+                                       user.email.toLowerCase().includes(this.searchUser.toLowerCase());
+                    const matchRole = !this.roleFilter || user.role === this.roleFilter;
+                    return matchSearch && matchRole;
+                });
+            },
+
+            openUserModal() {
+                this.newUser = { nom: '', email: '', telephone: '', password: '', role: 'CLIENT' };
+                this.showUserModal = true;
+            },
+
+            createUser() {
+                if (window.javaApp && window.javaApp.createUser) {
+                    const success = window.javaApp.createUser(JSON.stringify(this.newUser));
+                    if (success) {
+                        this.loadUsers();
+                        this.showUserModal = false;
+                        alert('Utilisateur créé avec succès');
+                    } else {
+                        alert('Erreur lors de la création');
+                    }
+                } else {
+                    alert('Fonctionnalité non disponible');
+                }
+            },
+
+            toggleUserStatus(user) {
+                if (window.javaApp && window.javaApp.toggleUserStatus) {
+                    if (window.javaApp.toggleUserStatus(user.id, !user.active)) {
+                        user.active = !user.active;
+                        alert('Statut modifié');
+                    }
+                }
+            },
+
+            deleteUser(user) {
+                if (confirm(`Supprimer ${user.nom} ?`)) {
+                    if (window.javaApp && window.javaApp.deleteUser) {
+                        if (window.javaApp.deleteUser(user.id)) {
+                            this.users = this.users.filter(u => u.id !== user.id);
+                            this.loadStats();
+                            alert('Utilisateur supprimé');
+                        }
+                    }
+                }
+            },
+
+            openProductModal() {
+                this.newProduct = { nom: '', description: '', prix: 0, stock: 0, unite: 'litre' };
+                this.showProductModal = true;
+            },
+
+            createProduct() {
+                if (window.javaApp && window.javaApp.createProduct) {
+                    const success = window.javaApp.createProduct(JSON.stringify(this.newProduct));
+                    if (success) {
+                        this.loadProducts();
+                        this.showProductModal = false;
+                        alert('Produit ajouté');
+                    } else {
+                        alert('Erreur lors de l\'ajout');
+                    }
+                }
+            },
+
+            toggleProductStatus(produit) {
+                if (window.javaApp && window.javaApp.toggleProductStatus) {
+                    if (window.javaApp.toggleProductStatus(produit.id, !produit.disponible)) {
+                        produit.disponible = !produit.disponible;
+                        alert('Statut modifié');
+                    }
+                }
+            },
+
+            deleteProduct(produit) {
+                if (confirm(`Supprimer ${produit.nom} ?`)) {
+                    if (window.javaApp && window.javaApp.deleteProduct) {
+                        if (window.javaApp.deleteProduct(produit.id)) {
+                            this.produits = this.produits.filter(p => p.id !== produit.id);
+                            this.loadStats();
+                            alert('Produit supprimé');
+                        }
+                    }
+                }
+            },
+
+            updateOrderStatus(commande) {
+                if (window.javaApp && window.javaApp.updateOrderStatus) {
+                    window.javaApp.updateOrderStatus(commande.id, commande.statut);
+                    alert('Statut commande mis à jour');
+                }
+            },
+
+            formatPrice(prix) {
+                return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(prix);
+            },
+
+            formatDate(dateStr) {
+                if (!dateStr) return '';
+                return new Date(dateStr).toLocaleDateString('fr-FR');
+            },
+
+            logout() {
+                if (window.javaApp && window.javaApp.logout) {
+                    window.javaApp.logout();
+                }
+            },
+
+            renderCharts() {
+                if (this.salesChart) this.salesChart.destroy();
+                if (this.productsChart) this.productsChart.destroy();
+
+                const salesCtx = document.getElementById('salesChart');
+                if (salesCtx) {
+                    this.salesChart = new Chart(salesCtx, {
+                        type: 'line',
+                        data: {
+                            labels: ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin'],
+                            datasets: [{
+                                label: 'Ventes (€)',
+                                data: [1200, 1900, 1300, 2500, 2200, 3000],
+                                borderColor: 'rgb(79, 70, 229)',
+                                backgroundColor: 'rgba(79, 70, 229, 0.1)',
+                                tension: 0.3,
+                                fill: true
+                            }]
+                        },
+                        options: { responsive: true, maintainAspectRatio: false }
+                    });
+                }
+
+                const productsCtx = document.getElementById('productsChart');
+                if (productsCtx && this.topProduits.length > 0) {
+                    this.productsChart = new Chart(productsCtx, {
+                        type: 'bar',
+                        data: {
+                            labels: this.topProduits.map(p => p.nom),
+                            datasets: [{
+                                label: 'Unités vendues',
+                                data: this.topProduits.map(p => p.vendu),
+                                backgroundColor: 'rgba(79, 70, 229, 0.7)'
+                            }]
+                        },
+                        options: { responsive: true, maintainAspectRatio: false, indexAxis: 'y' }
+                    });
+                }
+            }
+        }
+    }
+    </script>
+</body>
+</html>

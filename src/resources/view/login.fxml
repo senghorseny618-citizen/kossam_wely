@@ -1,0 +1,218 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.text.*?>
+<?import javafx.scene.shape.*?>
+
+<BorderPane xmlns="http://javafx.com/javafx/21"
+            xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="controller.LoginController"
+            style="-fx-background-color: #e8ecf2;">
+    
+    <center>
+        <VBox alignment="CENTER" spacing="0" style="-fx-background-color: transparent;">
+            <padding>
+                <Insets top="60" right="80" bottom="60" left="80"/>
+            </padding>
+            
+            <HBox alignment="CENTER" spacing="50" style="-fx-background-color: transparent;">
+                
+                <!-- CARD GAUCHE (Blanche) - FORMULAIRE DE CONNEXION -->
+                <VBox alignment="CENTER" spacing="25" 
+                      style="-fx-background-color: white; -fx-background-radius: 40; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.15), 25, 0, 0, 10);"
+                      prefWidth="480.0" prefHeight="750.0" 
+                      maxWidth="480.0" maxHeight="750.0"
+                      HBox.hgrow="NEVER">
+                    <padding>
+                        <Insets top="45" right="40" bottom="45" left="40"/>
+                    </padding>
+
+                    <!-- Logo KOSSAM WELLI -->
+                    <VBox alignment="CENTER" spacing="10">
+                        <HBox alignment="CENTER" spacing="8">
+                            <Label text="🥛" style="-fx-font-size: 38;"/>
+                            <Label text="KOSSAM WELLI" 
+                                   style="-fx-font-size: 24; -fx-font-weight: 800; -fx-text-fill: #2c5f2d;"/>
+                        </HBox>
+                        
+                        <Label text="Bienvenue !" 
+                               style="-fx-font-size: 32; -fx-font-weight: 800; -fx-text-fill: #2c5f2d; -fx-padding: 8 0 5 0;"/>
+                        
+                        <Label text="Connectez-vous à votre compte" 
+                               style="-fx-font-size: 13; -fx-text-fill: #6c757d;"/>
+                    </VBox>
+
+                    <!-- Formulaire -->
+                    <VBox spacing="16" style="-fx-pref-width: 100%; -fx-padding: 5 0 0 0;">
+                        
+                        <!-- Email -->
+                        <VBox spacing="5">
+                            <Label text="Adresse e-mail" 
+                                   style="-fx-font-size: 12; -fx-font-weight: 600; -fx-text-fill: #495057;"/>
+                            <TextField fx:id="emailField" 
+                                       promptText="votre@email.com" 
+                                       style="-fx-background-color: #f8f9fa; -fx-background-radius: 25; -fx-border-color: #e9ecef; -fx-border-radius: 25; -fx-border-width: 1.5; -fx-padding: 11 16; -fx-font-size: 13;"
+                                       prefWidth="Infinity"/>
+                        </VBox>
+
+                        <!-- Mot de passe -->
+                        <VBox spacing="5">
+                            <Label text="Mot de passe" 
+                                   style="-fx-font-size: 12; -fx-font-weight: 600; -fx-text-fill: #495057;"/>
+                            <PasswordField fx:id="passwordField" 
+                                           promptText="••••••••" 
+                                           style="-fx-background-color: #f8f9fa; -fx-background-radius: 25; -fx-border-color: #e9ecef; -fx-border-radius: 25; -fx-border-width: 1.5; -fx-padding: 11 16; -fx-font-size: 13;"
+                                           prefWidth="Infinity"/>
+                        </VBox>
+
+                        <!-- Mot de passe oublié -->
+                        <HBox alignment="CENTER_RIGHT">
+                            <Label text="Mot de passe oublié ?" 
+                                   style="-fx-text-fill: #6c757d; -fx-font-size: 11; -fx-cursor: hand;"
+                                   onMouseClicked="#forgotPassword"/>
+                        </HBox>
+
+                        <!-- Message d'erreur -->
+                        <Label fx:id="errorLabel" text="" 
+                               style="-fx-text-fill: #dc3545; -fx-font-size: 11; -fx-background-color: rgba(220,53,69,0.1); -fx-background-radius: 12; -fx-padding: 5 10;"
+                               visible="false" managed="false" wrapText="true"/>
+
+                        <!-- Bouton SE CONNECTER -->
+                        <Button fx:id="loginButton" text="SE CONNECTER"
+                                onAction="#handleLogin"
+                                style="-fx-background-color: #2c5f2d; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 14; -fx-padding: 12 28; -fx-background-radius: 40; -fx-cursor: hand;"
+                                prefWidth="Infinity"/>
+
+                        <!-- Séparateur -->
+                        <HBox alignment="CENTER" spacing="12" style="-fx-padding: 8 0;">
+                            <Region style="-fx-background-color: #e9ecef; -fx-pref-height: 1; -fx-pref-width: 100;"/>
+                            <Label text="ou" style="-fx-text-fill: #adb5bd; -fx-font-size: 10;"/>
+                            <Region style="-fx-background-color: #e9ecef; -fx-pref-height: 1; -fx-pref-width: 100;"/>
+                        </HBox>
+                        
+                        <!-- Boutons sociaux -->
+                        <HBox alignment="CENTER" spacing="12">
+                            <StackPane style="-fx-background-color: #f8f9fa; -fx-background-radius: 30; -fx-padding: 7 18; -fx-cursor: hand;"
+                                       onMouseClicked="#googleLogin">
+                                <Label text="G" style="-fx-font-size: 16; -fx-font-weight: bold; -fx-text-fill: #db4437;"/>
+                            </StackPane>
+                            <StackPane style="-fx-background-color: #f8f9fa; -fx-background-radius: 30; -fx-padding: 7 18; -fx-cursor: hand;"
+                                       onMouseClicked="#facebookLogin">
+                                <Label text="f" style="-fx-font-size: 16; -fx-font-weight: bold; -fx-text-fill: #4267B2;"/>
+                            </StackPane>
+                            <StackPane style="-fx-background-color: #f8f9fa; -fx-background-radius: 30; -fx-padding: 7 18; -fx-cursor: hand;"
+                                       onMouseClicked="#appleLogin">
+                                <Label text="" style="-fx-font-size: 18; -fx-text-fill: #000000;"/>
+                            </StackPane>
+                        </HBox>
+
+                        <!-- Inscription -->
+                        <VBox alignment="CENTER" spacing="6" style="-fx-padding: 12 0 0 0;">
+                            <Label text="Pas encore de compte ?" 
+                                   style="-fx-text-fill: #6c757d; -fx-font-size: 12;"/>
+                            <Button fx:id="registerButton" text="CRÉER UN COMPTE"
+                                    onAction="#goToRegister"
+                                    style="-fx-background-color: transparent; -fx-text-fill: #2c5f2d; -fx-font-weight: 600; -fx-font-size: 13; -fx-border-color: #2c5f2d; -fx-border-width: 2; -fx-border-radius: 40; -fx-padding: 10 24; -fx-cursor: hand;"
+                                    prefWidth="Infinity"/>
+                        </VBox>
+                    </VBox>
+                </VBox>
+                
+                <!-- CARD DROITE (Verte) - HERO SECTION -->
+                <VBox alignment="CENTER" spacing="25" 
+                      style="-fx-background-color: #2c5f2d; -fx-background-radius: 40; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.2), 30, 0, 0, 12);"
+                      prefWidth="520.0" prefHeight="750.0"
+                      maxWidth="520.0" maxHeight="750.0"
+                      HBox.hgrow="ALWAYS">
+                    <padding>
+                        <Insets top="45" right="40" bottom="45" left="40"/>
+                    </padding>
+                    
+                    <VBox alignment="CENTER" spacing="25">
+                        
+                        <!-- KOSSAM WELLI -->
+                        <VBox alignment="CENTER" spacing="10">
+                            <Label text="🥛" style="-fx-font-size: 55;"/>
+                            <Label text="KOSSAM WELLI" 
+                                   style="-fx-font-size: 32; -fx-font-weight: 800; -fx-text-fill: white;"/>
+                        </VBox>
+                        
+                        <!-- Ligne décorative -->
+                        <Rectangle width="60" height="2" fill="white" arcWidth="3" arcHeight="3"/>
+                        
+                        <!-- Description -->
+                        <VBox alignment="CENTER" spacing="6">
+                            <Label text="Lait frais &amp; produits laitiers" 
+                                   style="-fx-font-size: 22; -fx-font-weight: 700; -fx-text-fill: white;"
+                                   wrapText="true" textAlignment="CENTER"/>
+                            
+                            <Label text="100% Frais &amp; Délicieux" 
+                                   style="-fx-font-size: 14; -fx-text-fill: rgba(255,255,255,0.9);"
+                                   wrapText="true" textAlignment="CENTER"/>
+                        </VBox>
+                        
+                        <!-- Badges -->
+                        <HBox alignment="CENTER" spacing="10">
+                            <StackPane style="-fx-background-color: rgba(255,255,255,0.2); -fx-background-radius: 30; -fx-padding: 6 16;">
+                                <Label text="100% FRAIS" style="-fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 10;"/>
+                            </StackPane>
+                            <StackPane style="-fx-background-color: rgba(255,255,255,0.2); -fx-background-radius: 30; -fx-padding: 6 16;">
+                                <Label text="LACTOSE FREE" style="-fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 10;"/>
+                            </StackPane>
+                        </HBox>
+                        
+                        <!-- Avantages -->
+                        <VBox spacing="10" style="-fx-padding: 5 0;">
+                            <HBox alignment="CENTER" spacing="8">
+                                <Label text="✓" style="-fx-font-size: 12; -fx-text-fill: white; -fx-font-weight: bold;"/>
+                                <Label text="Produits frais &amp; locaux" style="-fx-text-fill: rgba(255,255,255,0.9); -fx-font-size: 12;"/>
+                            </HBox>
+                            <HBox alignment="CENTER" spacing="8">
+                                <Label text="✓" style="-fx-font-size: 12; -fx-text-fill: white; -fx-font-weight: bold;"/>
+                                <Label text="Livraison à domicile" style="-fx-text-fill: rgba(255,255,255,0.9); -fx-font-size: 12;"/>
+                            </HBox>
+                            <HBox alignment="CENTER" spacing="8">
+                                <Label text="✓" style="-fx-font-size: 12; -fx-text-fill: white; -fx-font-weight: bold;"/>
+                                <Label text="Paiement sécurisé" style="-fx-text-fill: rgba(255,255,255,0.9); -fx-font-size: 12;"/>
+                            </HBox>
+                            <HBox alignment="CENTER" spacing="8">
+                                <Label text="✓" style="-fx-font-size: 12; -fx-text-fill: white; -fx-font-weight: bold;"/>
+                                <Label text="Sans lactose disponible" style="-fx-text-fill: rgba(255,255,255,0.9); -fx-font-size: 12;"/>
+                            </HBox>
+                        </VBox>
+                        
+                        <!-- Bouton COMMANDER MAINTENANT -->
+                        <Button text="COMMANDER MAINTENANT →" 
+                                style="-fx-background-color: white; -fx-text-fill: #2c5f2d; -fx-font-weight: bold; -fx-font-size: 12; -fx-padding: 10 24; -fx-background-radius: 40; -fx-cursor: hand;"
+                                onMouseClicked="#goToRegister"
+                                prefWidth="Infinity"/>
+                        
+                        <!-- Statistiques -->
+                        <HBox alignment="CENTER" spacing="30" style="-fx-padding: 10 0 0 0;">
+                            <VBox alignment="CENTER" spacing="3">
+                                <Label text="5000+" style="-fx-font-size: 24; -fx-font-weight: 800; -fx-text-fill: white;"/>
+                                <Label text="Clients" style="-fx-text-fill: rgba(255,255,255,0.7); -fx-font-size: 10;"/>
+                            </VBox>
+                            <Rectangle width="1" height="30" fill="rgba(255,255,255,0.3)"/>
+                            <VBox alignment="CENTER" spacing="3">
+                                <Label text="200+" style="-fx-font-size: 24; -fx-font-weight: 800; -fx-text-fill: white;"/>
+                                <Label text="Producteurs" style="-fx-text-fill: rgba(255,255,255,0.7); -fx-font-size: 10;"/>
+                            </VBox>
+                            <Rectangle width="1" height="30" fill="rgba(255,255,255,0.3)"/>
+                            <VBox alignment="CENTER" spacing="3">
+                                <Label text="4.9" style="-fx-font-size: 24; -fx-font-weight: 800; -fx-text-fill: white;"/>
+                                <Label text="⭐ Note" style="-fx-text-fill: rgba(255,255,255,0.7); -fx-font-size: 10;"/>
+                            </VBox>
+                        </HBox>
+                        
+                        <!-- Note de bas -->
+                        <Label text="📍 Livraison rapide • 🥛 Produits frais • 💳 Paiement sécurisé" 
+                               style="-fx-text-fill: rgba(255,255,255,0.6); -fx-font-size: 9; -fx-padding: 8 0 0 0;"/>
+                    </VBox>
+                </VBox>
+            </HBox>
+        </VBox>
+    </center>
+</BorderPane>

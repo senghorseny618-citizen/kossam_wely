@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Espace Client - Kossam welli</title>
+
+    <!-- Tailwind CSS compilé -->
+    <link rel="stylesheet" href="css/style.css">
+
+    <!-- Alpine.js pour la réactivité -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+
+    <!-- Font Awesome pour les icônes -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-gray-50 min-h-screen" x-data="clientApp()" x-init="init()">
+
+<!-- Navigation -->
+<nav class="bg-white shadow-lg sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4">
+        <div class="flex justify-between h-16">
+            <!-- Logo -->
+            <div class="flex items-center">
+                <span class="text-3xl mr-2">🥛</span>
+                <span class="font-bold text-xl text-blue-600">Kossam welli</span>
+            </div>
+
+            <!-- Menu -->
+            <div class="flex items-center space-x-4">
+                <button @click="activeTab = 'produits'"
+                        :class="{'text-blue-600 border-b-2 border-blue-600': activeTab === 'produits'}"
+                        class="px-3 py-2 text-gray-700 hover:text-blue-600 transition">
+                    <i class="fas fa-store mr-1"></i> Produits
+                </button>
+
+                <button @click="activeTab = 'panier'"
+                        :class="{'text-blue-600 border-b-2 border-blue-600': activeTab === 'panier'}"
+                        class="px-3 py-2 text-gray-700 hover:text-blue-600 transition relative">
+                    <i class="fas fa-shopping-cart mr-1"></i> Panier
+                    <span x-show="panier.length > 0"
+                          x-text="panier.length"
+                          class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                        </span>
+                </button>
+
+                <button @click="activeTab = 'commandes'"
+                        :class="{'text-blue-600 border-b-2 border-blue-600': activeTab === 'commandes'}"
+                        class="px-3 py-2 text-gray-700 hover:text-blue-600 transition">
+                    <i class="fas fa-box mr-1"></i> Mes Commandes
+                </button>
+
+                <!-- Profil -->
+                <div class="relative" x-data="{ open: false }">
+                    <button @click="open = !open" class="flex items-center space-x-2 text-gray-700 hover:text-blue-600">
+                        <i class="fas fa-user-circle text-2xl"></i>
+                        <span x-text="user.nom"></span>
+                        <i class="fas fa-chevron-down text-xs"></i>
+                    </button>
+
+                    <div x-show="open" @click.away="open = false"
+                         class="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg py-2">
+                        <div class="px-4 py-2 text-sm text-gray-600 border-b">
+                            <p x-text="user.email"></p>
+                            <p class="text-xs" x-text="user.telephone"></p>
+                        </div>
+                        <button @click="logout()" class="w-full text-left px-4 py-2 text-red-600 hover:bg-red-50">
+                            <i class="fas fa-sign-out-alt mr-2"></i> Déconnexion
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</nav>
+
+<!-- Contenu principal -->
+<main class="max-w-7xl mx-auto px-4 py-8">
+
+    <!-- TAB: Liste des produits -->
+    <div x-show="activeTab === 'produits'" x-transition>
+        <div class="mb-6">
+            <h1 class="text-3xl font-bold text-gray-800">Nos Produits Laitiers</h1>
+            <p class="text-gray-600 mt-2">Produits frais livrés chez vous</p>
+        </div>
+
+        <!-- Filtres -->
+        <div class="mb-6 flex flex-wrap gap-4">
+            <input type="text" x-model="searchTerm" placeholder="Rechercher un produit..."
+                   class="px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 w-full md:w-64">
+
+            <select x-model="selectedCategory" class="px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <option value="">Toutes les catégories</option>
+                <option value="lait">Lait</option>
+                <option value="fromage">Fromage</option>
+                <option value="yaourt">Yaourt</option>
+                <option value="beurre">Beurre</option>
+            </select>
+        </div>
+
+        <!-- Grille de produits -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            <template x-for="produit in filteredProduits" :key="produit.id">
+                <div class="bg-white rounded-xl shadow-md hover:shadow-lg transition-shadow overflow-hidden border border-gray-100">
+                    <!-- Image placeholder -->
+                    <div class="h-48 bg-gradient-to-br from-blue-100 to-blue-200 flex items-center justify-center">
+                        <span class="text-6xl">🥛</span>
+                    </div>
+
+                    <div class="p-5">
+                        <div class="flex justify-between items-start mb-2">
+                            <h3 class="font-bold text-lg text-gray-800" x-text="produit.nom"></h3>
+                            <span class="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full" x-show="produit.stock > 0">
+                                    En stock
+                                </span>
+                        </div>
+
+                        <p class="text-gray-600 text-sm mb-3 line-clamp-2" x-text="produit.description"></p>
+
+                        <div class="flex items-center justify-between mb-4">
+                            <div>
+                                <span class="text-2xl font-bold text-blue-600" x-text="formatPrice(produit.prix)"></span>
+                                <span class="text-gray-500 text-sm">/<span x-text="produit.unite"></span></span>
+                            </div>
+                            <span class="text-sm text-gray-500" x-text="'Dispo: ' + produit.stock"></span>
+                        </div>
+
+                        <!-- Ajout au panier -->
+                        <div class="flex items-center space-x-2">
+                            <input type="number" x-model="produit.quantite" min="1" :max="produit.stock" value="1"
+                                   class="w-16 px-2 py-1 border rounded text-center">
+                            <button @click="ajouterAuPanier(produit)"
+                                    :disabled="produit.stock === 0"
+                                    :class="{'opacity-50 cursor-not-allowed': produit.stock === 0}"
+                                    class="flex-1 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition flex items-center justify-center">
+                                <i class="fas fa-cart-plus mr-2"></i> Ajouter
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </template>
+        </div>
+
+        <!-- Message si aucun produit -->
+        <div x-show="filteredProduits.length === 0" class="text-center py-12 text-gray-500">
+            <i class="fas fa-search text-4xl mb-4"></i>
+            <p>Aucun produit ne correspond à votre recherche</p>
+        </div>
+    </div>
+
+    <!-- TAB: Panier -->
+    <div x-show="activeTab === 'panier'" x-transition class="max-w-4xl mx-auto">
+        <h1 class="text-3xl font-bold text-gray-800 mb-6">Mon Panier</h1>
+
+        <div x-show="panier.length === 0" class="text-center py-12 bg-white rounded-xl shadow">
+            <i class="fas fa-shopping-basket text-6xl text-gray-300 mb-4"></i>
+            <p class="text-gray-500">Votre panier est vide</p>
+            <button @click="activeTab = 'produits'" class="mt-4 text-blue-600 hover:underline">
+                Continuer les achats
+            </button>
+        </div>
+
+        <div x-show="panier.length > 0" class="bg-white rounded-xl shadow-lg overflow-hidden">
+            <!-- Liste des articles -->
+            <div class="divide-y divide-gray-100">
+                <template x-for="(item, index) in panier" :key="index">
+                    <div class="p-6 flex items-center justify-between hover:bg-gray-50">
+                        <div class="flex items-center space-x-4">
+                            <div class="w-16 h-16 bg-blue-100 rounded-lg flex items-center justify-center text-2xl">
+                                🥛
+                            </div>
+                            <div>
+                                <h3 class="font-bold text-gray-800" x-text="item.nom"></h3>
+                                <p class="text-sm text-gray-500" x-text="formatPrice(item.prixUnitaire) + ' / ' + item.unite"></p>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center space-x-4">
+                            <div class="flex items-center border rounded-lg">
+                                <button @click="item.quantite > 1 && item.quantite--" class="px-3 py-1 hover:bg-gray-100">-</button>
+                                <span class="px-3 py-1 font-medium" x-text="item.quantite"></span>
+                                <button @click="item.quantite++" class="px-3 py-1 hover:bg-gray-100">+</button>
+                            </div>
+
+                            <div class="text-right min-w-[100px]">
+                                <p class="font-bold text-gray-800" x-text="formatPrice(item.prixUnitaire * item.quantite)"></p>
+                            </div>
+
+                            <button @click="retirerDuPanier(index)" class="text-red-500 hover:text-red-700">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                </template>
+            </div>
+
+            <!-- Total et validation -->
+            <div class="bg-gray-50 p-6 border-t">
+                <div class="flex justify-between items-center mb-4">
+                    <span class="text-gray-600">Sous-total</span>
+                    <span class="font-bold" x-text="formatPrice(totalPanier)"></span>
+                </div>
+                <div class="flex justify-between items-center mb-4">
+                    <span class="text-gray-600">Livraison</span>
+                    <span class="text-green-600">Gratuite</span>
+                </div>
+                <div class="flex justify-between items-center text-xl font-bold border-t pt-4">
+                    <span>Total</span>
+                    <span class="text-blue-600" x-text="formatPrice(totalPanier)"></span>
+                </div>
+
+                <button @click="validerCommande()"
+                        class="w-full mt-6 bg-green-600 text-white py-3 rounded-lg font-bold hover:bg-green-700 transition flex items-center justify-center">
+                    <i class="fas fa-check-circle mr-2"></i> Valider la commande
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- TAB: Mes commandes -->
+    <div x-show="activeTab === 'commandes'" x-transition>
+        <h1 class="text-3xl font-bold text-gray-800 mb-6">Mes Commandes</h1>
+
+        <div class="space-y-4">
+            <template x-for="commande in commandes" :key="commande.id">
+                <div class="bg-white rounded-xl shadow-md p-6 border-l-4"
+                     :class="{
+                             'border-yellow-400': commande.statut === 'EN_PREPARATION',
+                             'border-blue-400': commande.statut === 'EXPEDIEE',
+                             'border-green-400': commande.statut === 'LIVREE',
+                             'border-gray-400': commande.statut === 'PAYEE'
+                         }">
+                    <div class="flex justify-between items-start mb-4">
+                        <div>
+                            <h3 class="font-bold text-lg">Commande #<span x-text="commande.id"></span></h3>
+                            <p class="text-sm text-gray-500" x-text="formatDate(commande.dateCommande)"></p>
+                        </div>
+                        <span class="px-3 py-1 rounded-full text-sm font-medium"
+                              :class="{
+                                      'bg-yellow-100 text-yellow-800': commande.statut === 'EN_PREPARATION',
+                                      'bg-blue-100 text-blue-800': commande.statut === 'EXPEDIEE',
+                                      'bg-green-100 text-green-800': commande.statut === 'LIVREE',
+                                      'bg-gray-100 text-gray-800': commande.statut === 'PAYEE'
+                                  }"
+                              x-text="commande.statut">
+                            </span>
+                    </div>
+
+                    <div class="space-y-2 mb-4">
+                        <template x-for="detail in commande.details" :key="detail.id">
+                            <div class="flex justify-between text-sm">
+                                <span x-text="detail.quantite + 'x ' + detail.nomProduit"></span>
+                                <span x-text="formatPrice(detail.prixUnitaire * detail.quantite)"></span>
+                            </div>
+                        </template>
+                    </div>
+
+                    <div class="border-t pt-4 flex justify-between items-center">
+                        <span class="font-bold text-lg">Total: <span x-text="formatPrice(commande.total)"></span></span>
+                        <button class="text-blue-600 hover:underline text-sm">
+                            Voir les détails
+                        </button>
+                    </div>
+                </div>
+            </template>
+        </div>
+    </div>
+
+</main>
+
+<!-- JavaScript Alpine.js -->
+<script>
+    function clientApp() {
+        return {
+            // État
+            activeTab: 'produits',
+            user: {
+                nom: 'Chargement...',
+                email: '',
+                telephone: ''
+            },
+            produits: [],
+            panier: [],
+            commandes: [],
+            searchTerm: '',
+            selectedCategory: '',
+
+            // Initialisation
+            init() {
+                this.loadUser();
+                this.loadProduits();
+                this.loadCommandes();
+            },
+
+            // Charger l'utilisateur depuis Java
+            loadUser() {
+                // Appel Java via le bridge (sera implémenté plus tard)
+                if (window.javaApp && window.javaApp.getCurrentUser) {
+                    const userJson = window.javaApp.getCurrentUser();
+                    this.user = JSON.parse(userJson);
+                }
+            },
+
+            // Charger les produits
+            loadProduits() {
+                // Simulation - sera remplacé par appel Java
+                this.produits = [
+                    { id: 1, nom: 'Lait entier bio', description: 'Lait frais de vaches en pâturage', prix: 700, stock: 50, unite: 'litre', quantite: 1, categorie: 'lait' },
+                    { id: 2, nom: 'Yaourt nature', description: 'Yaourt fermier au lait entier', prix: 900, stock: 30, unite: 'pot de 500g', quantite: 1, categorie: 'yaourt' },
+                    { id: 3, nom: 'Fromage blanc', description: 'Fromage blanc crémeux', prix: 2000, stock: 20, unite: '500g', quantite: 1, categorie: 'fromage' },
+                    { id: 4, nom: 'Beurre doux', description: 'Beurre artisanal non salé', prix: 1500, stock: 15, unite: '250g', quantite: 1, categorie: 'beurre' }
+                ];
+            },
+
+            // Charger les commandes
+            loadCommandes() {
+                // Simulation
+                this.commandes = [];
+            },
+
+            // Filtres
+            get filteredProduits() {
+                return this.produits.filter(p => {
+                    const matchSearch = p.nom.toLowerCase().includes(this.searchTerm.toLowerCase()) ||
+                        p.description.toLowerCase().includes(this.searchTerm.toLowerCase());
+                    const matchCategory = !this.selectedCategory || p.categorie === this.selectedCategory;
+                    return matchSearch && matchCategory;
+                });
+            },
+
+            // Panier
+            get totalPanier() {
+                return this.panier.reduce((sum, item) => sum + (item.prixUnitaire * item.quantite), 0);
+            },
+
+            ajouterAuPanier(produit) {
+                const existing = this.panier.find(item => item.id === produit.id);
+                if (existing) {
+                    existing.quantite += parseInt(produit.quantite);
+                } else {
+                    this.panier.push({
+                        id: produit.id,
+                        nom: produit.nom,
+                        prixUnitaire: produit.prix,
+                        unite: produit.unite,
+                        quantite: parseInt(produit.quantite)
+                    });
+                }
+                // Reset quantité
+                produit.quantite = 1;
+                // Notification
+                alert('Produit ajouté au panier !');
+            },
+
+            retirerDuPanier(index) {
+                this.panier.splice(index, 1);
+            },
+
+            validerCommande() {
+                if (confirm('Confirmer la commande de ' + this.formatPrice(this.totalPanier) + ' ?')) {
+                    // Appel Java pour valider
+                    if (window.javaApp && window.javaApp.createOrder) {
+                        const success = window.javaApp.createOrder(JSON.stringify(this.panier));
+                        if (success) {
+                            alert('Commande validée !');
+                            this.panier = [];
+                            this.activeTab = 'commandes';
+                            this.loadCommandes();
+                        }
+                    }
+                }
+            },
+
+            // Utilitaires
+            formatPrice(prix) {
+                return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'XOF' }).format(prix);
+            },
+
+            formatDate(dateStr) {
+                return new Date(dateStr).toLocaleDateString('fr-FR', {
+                    day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit'
+                });
+            },
+
+            logout() {
+                if (window.javaApp && window.javaApp.logout) {
+                    window.javaApp.logout();
+                }
+            }
+        }
+    }
+</script>
+</body>
+</html>
