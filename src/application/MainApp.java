@@ -30,7 +30,6 @@ public class MainApp extends Application {
     private static Stage primaryStage;
     private static WebView webView;
     private static WebEngine webEngine;
-    private static JavaBridge javaBridge;
 
     @Override
     public void start(Stage primaryStage) {
@@ -96,31 +95,9 @@ public class MainApp extends Application {
             webView = new WebView();
             webEngine = webView.getEngine();
             
-            // Activer le bridge JavaScript
             webEngine.setJavaScriptEnabled(true);
-            
-            // Créer le bridge une fois
-            javaBridge = new JavaBridge();
 
-            // Attendre que la page soit chargée pour injecter le bridge
-            webEngine.getLoadWorker().stateProperty().addListener((obs, oldState, newState) -> {
-                if (newState == Worker.State.SUCCEEDED) {
-                    System.out.println("✅ Page chargée avec succès, injection du bridge Java...");
-                    try {
-                        JSObject window = (JSObject) webEngine.executeScript("window");
-                        window.setMember("javaApp", javaBridge);
-                        System.out.println("✅ Bridge Java injecté dans la page");
-                        
-                        // Tester si le bridge fonctionne
-                        webEngine.executeScript("console.log('Bridge Java disponible: ' + (typeof javaApp !== 'undefined'));");
-                        webEngine.executeScript("if(typeof javaApp !== 'undefined') { console.log('✅ javaApp est disponible dans la page'); }");
-                        
-                    } catch (Exception e) {
-                        System.err.println("❌ Erreur lors de l'injection du bridge: " + e.getMessage());
-                        e.printStackTrace();
-                    }
-                }
-            });
+            setupJavaScriptBridge();
 
             String page = switch(role.toUpperCase()) {
                 case "ADMIN" -> "admin.html";
@@ -134,9 +111,6 @@ public class MainApp extends Application {
                 webEngine.load(url.toExternalForm());
             } else {
                 System.err.println("❌ Fichier non trouvé : /resources/web/" + page);
-                // Charger une page de test
-                String testHtml = "<html><body><h1>Erreur</h1><p>Fichier " + page + " non trouvé</p></body></html>";
-                webEngine.loadContent(testHtml);
             }
 
             Scene scene = new Scene(webView, 1200, 800);
@@ -146,6 +120,17 @@ public class MainApp extends Application {
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+
+    private static void setupJavaScriptBridge() {
+        webEngine.getLoadWorker().stateProperty().addListener((obs, oldState, newState) -> {
+            if (newState == Worker.State.SUCCEEDED) {
+                JSObject window = (JSObject) webEngine.executeScript("window");
+                JavaBridge bridge = new JavaBridge();
+                window.setMember("javaApp", bridge);
+                System.out.println("✅ Pont Java-JavaScript initialisé avec succès");
+            }
+        });
     }
 
     public static class JavaBridge {
@@ -164,7 +149,6 @@ public class MainApp extends Application {
                 System.out.println("📋 Utilisateur: " + json);
                 return json;
             }
-            System.out.println("⚠️ Aucun utilisateur connecté");
             return "{}";
         }
         
@@ -175,49 +159,150 @@ public class MainApp extends Application {
                 showLoginView();
             });
         }
-     // ==================== MÉTHODES ADMIN POUR VALIDATION PRODUCTEUR ====================
-
-        public String getProducteursEnAttente() {
-            if (!authService.isAdmin()) return "[]";
-            List<Utilisateur> producteurs = utilisateurDAO.findProducteursEnAttente();
+        
+        // ==================== MÉTHODES CLIENT ====================
+        
+        /**
+         * Récupère tous les produits disponibles pour les clients
+         */
+        public String getAllProducts() {
+            System.out.println("🔵 getAllProducts appelé");
+            List<Produit> produits = produitDAO.findAllAvailable();
             JSONArray jsonArray = new JSONArray();
-            for (Utilisateur p : producteurs) {
+            for (Produit p : produits) {
                 JSONObject obj = new JSONObject();
                 obj.put("id", p.getId());
                 obj.put("nom", p.getNom());
-                obj.put("email", p.getEmail());
-                obj.put("telephone", p.getTelephone());
-                obj.put("adresse", p.getAdresse());
-                obj.put("documents", p.getDocumentsJustificatifs() != null ? p.getDocumentsJustificatifs() : "");
-                obj.put("dateDemande", p.getDateDemande() != null ? p.getDateDemande() : "");
+                obj.put("description", p.getDescription() != null ? p.getDescription() : "");
+                obj.put("prix", p.getPrix());
+                obj.put("stock", p.getStock());
+                obj.put("unite", p.getUnite());
+                obj.put("producteur_id", p.getProducteurId());
+                obj.put("producteur_nom", p.getProducteurNom() != null ? p.getProducteurNom() : "");
+                obj.put("disponible", p.isDisponible());
+                obj.put("image_url", p.getImageUrl() != null ? p.getImageUrl() : "");
                 jsonArray.put(obj);
             }
+            String result = jsonArray.toString();
+            System.out.println("📦 " + produits.size() + " produits retournés");
+            return result;
+        }
+        
+        /**
+         * Crée une commande à partir du panier
+         */
+        public boolean createOrder(String panierJson) {
+            System.out.println("🔵 createOrder appelé");
+            System.out.println("📦 Panier JSON: " + panierJson);
+            
+            if (!authService.isClient()) {
+                System.err.println("❌ L'utilisateur n'est pas un client !");
+                return false;
+            }
+            
+            try {
+                JSONArray panier = new JSONArray(panierJson);
+                Utilisateur client = authService.getCurrentUser();
+                
+                if (panier.length() == 0) {
+                    System.err.println("❌ Panier vide");
+                    return false;
+                }
+                
+                Commande commande = new Commande();
+                commande.setClientId(client.getId());
+                commande.setClientNom(client.getNom());
+                commande.setAdresseLivraison(client.getAdresse());
+                commande.setStatut(Commande.Statut.PAYEE);
+                
+                for (int i = 0; i < panier.length(); i++) {
+                    JSONObject item = panier.getJSONObject(i);
+                    DetailCommande detail = new DetailCommande();
+                    detail.setProduitId(item.getInt("id"));
+                    detail.setNomProduit(item.getString("nom"));
+                    detail.setQuantite(item.getInt("quantite"));
+                    detail.setPrixUnitaire(item.getDouble("prixUnitaire"));
+                    commande.getDetails().add(detail);
+                    System.out.println("📦 Détail: " + detail.getQuantite() + "x " + detail.getNomProduit() + " à " + detail.getPrixUnitaire() + " FCFA");
+                }
+                
+                commande.calculerTotal();
+                System.out.println("💰 Total commande: " + commande.getTotal() + " FCFA");
+                
+                int id = commandeDAO.create(commande);
+                System.out.println("✅ Commande créée avec ID: " + id);
+                
+                // Mettre à jour le stock des produits
+                for (int i = 0; i < panier.length(); i++) {
+                    JSONObject item = panier.getJSONObject(i);
+                    int produitId = item.getInt("id");
+                    int quantite = item.getInt("quantite");
+                    
+                    Produit produit = produitDAO.findById(produitId);
+                    if (produit != null) {
+                        int nouveauStock = produit.getStock() - quantite;
+                        produitDAO.updateStock(produitId, nouveauStock);
+                        System.out.println("📦 Stock mis à jour pour produit " + produitId + ": " + nouveauStock);
+                    }
+                }
+                
+                return id > 0;
+                
+            } catch (Exception e) {
+                System.err.println("❌ Erreur dans createOrder: " + e.getMessage());
+                e.printStackTrace();
+                return false;
+            }
+        }
+        
+        /**
+         * Récupère les commandes du client connecté
+         */
+        public String getClientOrders() {
+            System.out.println("🔵 getClientOrders appelé");
+            if (!authService.isClient()) {
+                System.err.println("❌ L'utilisateur n'est pas un client !");
+                return "[]";
+            }
+            
+            int clientId = authService.getCurrentUser().getId();
+            System.out.println("👤 ID Client: " + clientId);
+            
+            List<Commande> commandes = commandeDAO.findByClient(clientId);
+            JSONArray jsonArray = new JSONArray();
+            
+            for (Commande c : commandes) {
+                JSONObject obj = new JSONObject();
+                obj.put("id", c.getId());
+                obj.put("dateCommande", c.getDateCommande() != null ? c.getDateCommande().toString() : "");
+                obj.put("statut", c.getStatut() != null ? c.getStatut().getLibelle() : "En attente");
+                obj.put("total", c.getTotal());
+                obj.put("adresseLivraison", c.getAdresseLivraison() != null ? c.getAdresseLivraison() : "");
+                
+                JSONArray detailsArray = new JSONArray();
+                for (DetailCommande d : c.getDetails()) {
+                    JSONObject detailObj = new JSONObject();
+                    detailObj.put("id", d.getId());
+                    detailObj.put("nomProduit", d.getNomProduit());
+                    detailObj.put("quantite", d.getQuantite());
+                    detailObj.put("prixUnitaire", d.getPrixUnitaire());
+                    detailsArray.put(detailObj);
+                }
+                obj.put("details", detailsArray);
+                jsonArray.put(obj);
+            }
+            
+            System.out.println("📋 " + commandes.size() + " commandes retournées");
             return jsonArray.toString();
-        }
-
-        public boolean validerProducteur(int userId, boolean valider, String commentaire) {
-            if (!authService.isAdmin()) return false;
-            return utilisateurDAO.validerProducteur(userId, valider, commentaire);
-        }
-
-        public boolean isProducteurValide(int userId) {
-            return utilisateurDAO.isProducteurValide(userId);
         }
         
         // ==================== MÉTHODES PRODUCTEUR ====================
         
         public String getMyProducts() {
             System.out.println("🔵 getMyProducts appelé");
-            if (!authService.isProducteur() && !authService.isAdmin()) {
-                System.out.println("❌ Utilisateur non producteur");
-                return "[]";
-            }
+            if (!authService.isProducteur() && !authService.isAdmin()) return "[]";
             int producteurId = authService.getCurrentUser().getId();
-            System.out.println("👤 ID Producteur: " + producteurId);
-            
             List<Produit> produits = produitDAO.findByProducteur(producteurId);
-            System.out.println("📦 Produits trouvés: " + produits.size());
-            
             JSONArray jsonArray = new JSONArray();
             for (Produit p : produits) {
                 JSONObject obj = new JSONObject();
@@ -235,52 +320,22 @@ public class MainApp extends Application {
         
         public boolean createProduct(String produitJson) {
             System.out.println("🔵 createProduct appelé");
-            System.out.println("📦 JSON reçu: " + produitJson);
-            
-            if (!authService.isProducteur()) {
-                System.err.println("❌ Utilisateur non producteur");
-                return false;
-            }
+            if (!authService.isProducteur()) return false;
             
             try {
                 JSONObject json = new JSONObject(produitJson);
-                
-                String nom = json.optString("nom_produit");
-                if (nom.isEmpty()) {
-                    nom = json.optString("nom");
-                }
-                if (nom.isEmpty()) {
-                    System.err.println("❌ Nom du produit manquant");
-                    return false;
-                }
-                
-                String description = json.optString("description", "");
-                double prix = json.optDouble("prix", 0);
-                int stock = json.optInt("stock", 0);
-                String unite = json.optString("unite", "unité");
-                
-                if (prix <= 0) {
-                    System.err.println("❌ Prix invalide: " + prix);
-                    return false;
-                }
-                
                 Produit p = new Produit();
-                p.setNom(nom);
-                p.setDescription(description);
-                p.setPrix(prix);
-                p.setStock(stock);
-                p.setUnite(unite);
+                p.setNom(json.getString("nom_produit"));
+                p.setDescription(json.optString("description", ""));
+                p.setPrix(json.getDouble("prix"));
+                p.setStock(json.getInt("stock"));
+                p.setUnite(json.optString("unite", "unité"));
                 p.setProducteurId(authService.getCurrentUser().getId());
                 p.setDisponible(true);
                 
-                System.out.println("📦 Création du produit: " + p.getNom());
                 int id = produitDAO.create(p);
-                System.out.println("✅ Produit créé avec ID: " + id);
-                
                 return id > 0;
-                
             } catch (Exception e) {
-                System.err.println("❌ Erreur: " + e.getMessage());
                 e.printStackTrace();
                 return false;
             }
@@ -288,10 +343,7 @@ public class MainApp extends Application {
         
         public boolean updateProduct(String produitJson) {
             System.out.println("🔵 updateProduct appelé");
-            System.out.println("📦 JSON reçu: " + produitJson);
-            
             if (!authService.isProducteur()) return false;
-            
             try {
                 JSONObject json = new JSONObject(produitJson);
                 Produit p = new Produit();
@@ -304,23 +356,21 @@ public class MainApp extends Application {
                 p.setProducteurId(authService.getCurrentUser().getId());
                 p.setDisponible(json.optBoolean("disponible", true));
                 
-                boolean result = produitDAO.update(p);
-                System.out.println(result ? "✅ Produit modifié" : "❌ Échec modification");
-                return result;
+                return produitDAO.update(p);
             } catch (Exception e) {
-                System.err.println("❌ Erreur: " + e.getMessage());
+                e.printStackTrace();
                 return false;
             }
         }
         
         public boolean toggleProductStatus(int productId, boolean disponible) {
-            System.out.println("🔵 toggleProductStatus appelé: ID=" + productId + ", disponible=" + disponible);
+            System.out.println("🔵 toggleProductStatus appelé");
             if (!authService.isProducteur()) return false;
             return produitDAO.toggleDisponible(productId, disponible);
         }
         
         public boolean deleteProduct(int productId) {
-            System.out.println("🔵 deleteProduct appelé: ID=" + productId);
+            System.out.println("🔵 deleteProduct appelé");
             if (!authService.isProducteur()) return false;
             return produitDAO.delete(productId);
         }
@@ -340,14 +390,12 @@ public class MainApp extends Application {
                 obj.put("montant_total", c.getTotal());
                 
                 JSONArray detailsArray = new JSONArray();
-                if (c.getDetails() != null) {
-                    for (DetailCommande d : c.getDetails()) {
-                        JSONObject detailObj = new JSONObject();
-                        detailObj.put("nom_produit", d.getNomProduit());
-                        detailObj.put("quantite", d.getQuantite());
-                        detailObj.put("prix", d.getPrixUnitaire());
-                        detailsArray.put(detailObj);
-                    }
+                for (DetailCommande d : c.getDetails()) {
+                    JSONObject detailObj = new JSONObject();
+                    detailObj.put("nom_produit", d.getNomProduit());
+                    detailObj.put("quantite", d.getQuantite());
+                    detailObj.put("prix", d.getPrixUnitaire());
+                    detailsArray.put(detailObj);
                 }
                 obj.put("details", detailsArray);
                 jsonArray.put(obj);
@@ -356,7 +404,7 @@ public class MainApp extends Application {
         }
         
         public boolean updateOrderStatus(int orderId, String status) {
-            System.out.println("🔵 updateOrderStatus appelé: ID=" + orderId + ", status=" + status);
+            System.out.println("🔵 updateOrderStatus appelé");
             if (!authService.isProducteur()) return false;
             return commandeDAO.updateStatus(orderId, status);
         }
@@ -385,73 +433,6 @@ public class MainApp extends Application {
             return stats.toString();
         }
         
-        // ==================== MÉTHODES CLIENT ====================
-        
-        public String getAllProducts() {
-            System.out.println("🔵 getAllProducts appelé");
-            List<Produit> produits = produitDAO.findAllAvailable();
-            JSONArray jsonArray = new JSONArray();
-            for (Produit p : produits) {
-                JSONObject obj = new JSONObject();
-                obj.put("id", p.getId());
-                obj.put("nom", p.getNom());
-                obj.put("prix", p.getPrix());
-                obj.put("stock", p.getStock());
-                obj.put("unite", p.getUnite());
-                jsonArray.put(obj);
-            }
-            return jsonArray.toString();
-        }
-        
-        public boolean createOrder(String panierJson) {
-            System.out.println("🔵 createOrder appelé");
-            if (!authService.isClient()) return false;
-            try {
-                JSONArray panier = new JSONArray(panierJson);
-                Utilisateur client = authService.getCurrentUser();
-                
-                Commande commande = new Commande();
-                commande.setClientId(client.getId());
-                commande.setClientNom(client.getNom());
-                commande.setAdresseLivraison(client.getAdresse());
-                commande.setStatut(Commande.Statut.PAYEE);
-                
-                for (int i = 0; i < panier.length(); i++) {
-                    JSONObject item = panier.getJSONObject(i);
-                    DetailCommande detail = new DetailCommande();
-                    detail.setProduitId(item.getInt("id"));
-                    detail.setNomProduit(item.getString("nom"));
-                    detail.setQuantite(item.getInt("quantite"));
-                    detail.setPrixUnitaire(item.getDouble("prixUnitaire"));
-                    commande.getDetails().add(detail);
-                }
-                
-                commande.calculerTotal();
-                int id = commandeDAO.create(commande);
-                return id > 0;
-            } catch (Exception e) {
-                e.printStackTrace();
-                return false;
-            }
-        }
-        
-        public String getClientOrders() {
-            System.out.println("🔵 getClientOrders appelé");
-            if (!authService.isClient()) return "[]";
-            int clientId = authService.getCurrentUser().getId();
-            List<Commande> commandes = commandeDAO.findByClient(clientId);
-            JSONArray jsonArray = new JSONArray();
-            for (Commande c : commandes) {
-                JSONObject obj = new JSONObject();
-                obj.put("id", c.getId());
-                obj.put("dateCommande", c.getDateCommande() != null ? c.getDateCommande().toString() : "");
-                obj.put("statut", c.getStatut() != null ? c.getStatut().getLibelle() : "");
-                obj.put("total", c.getTotal());
-                jsonArray.put(obj);
-            }
-            return jsonArray.toString();
-        }
-        
         // ==================== MÉTHODES ADMIN ====================
         
         public String getAllUsers() {
@@ -464,6 +445,8 @@ public class MainApp extends Application {
                 obj.put("id", u.getId());
                 obj.put("nom", u.getNom());
                 obj.put("email", u.getEmail());
+                obj.put("telephone", u.getTelephone() != null ? u.getTelephone() : "");
+                obj.put("adresse", u.getAdresse() != null ? u.getAdresse() : "");
                 obj.put("role", u.getRole().name());
                 obj.put("active", u.isActive());
                 jsonArray.put(obj);
@@ -508,7 +491,8 @@ public class MainApp extends Application {
         public String getAllOrders() {
             System.out.println("🔵 getAllOrders appelé");
             if (!authService.isAdmin()) return "[]";
-            return "[]";
+            JSONArray jsonArray = new JSONArray();
+            return jsonArray.toString();
         }
         
         public String getStats() {
@@ -521,6 +505,37 @@ public class MainApp extends Application {
             stats.put("totalProduits", produitDAO.findAllAvailable().size());
             stats.put("totalCommandes", 0);
             return stats.toString();
+        }
+        
+        // ==================== MÉTHODES POUR VALIDATION PRODUCTEUR ====================
+        
+        public String getProducteursEnAttente() {
+            System.out.println("🔵 getProducteursEnAttente appelé");
+            if (!authService.isAdmin()) return "[]";
+            List<Utilisateur> producteurs = utilisateurDAO.findProducteursEnAttente();
+            JSONArray jsonArray = new JSONArray();
+            for (Utilisateur p : producteurs) {
+                JSONObject obj = new JSONObject();
+                obj.put("id", p.getId());
+                obj.put("nom", p.getNom());
+                obj.put("email", p.getEmail());
+                obj.put("telephone", p.getTelephone());
+                obj.put("adresse", p.getAdresse());
+                obj.put("documents", p.getDocumentsJustificatifs() != null ? p.getDocumentsJustificatifs() : "");
+                obj.put("dateDemande", p.getDateDemande() != null ? p.getDateDemande() : "");
+                jsonArray.put(obj);
+            }
+            return jsonArray.toString();
+        }
+        
+        public boolean validerProducteur(int userId, boolean valider, String commentaire) {
+            System.out.println("🔵 validerProducteur appelé");
+            if (!authService.isAdmin()) return false;
+            return utilisateurDAO.validerProducteur(userId, valider, commentaire);
+        }
+        
+        public boolean isProducteurValide(int userId) {
+            return utilisateurDAO.isProducteurValide(userId);
         }
     }
 

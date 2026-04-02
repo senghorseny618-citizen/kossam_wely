@@ -35,6 +35,9 @@ public class RegisterController {
     @FXML private VBox documentsContainer;
     @FXML private ListView<String> documentsListView;
     @FXML private Label documentsStatusLabel;
+    @FXML private Button btnAjouter;
+    @FXML private Button btnSupprimer;
+    @FXML private Button btnVider;
 
     private final AuthService authService;
     private final List<File> documentsFiles = new ArrayList<>();
@@ -62,30 +65,28 @@ public class RegisterController {
             }
         });
         
-        // Cacher le champ documents quand Client est selectionne
         clientRadio.selectedProperty().addListener((obs, old, isSelected) -> {
             if (documentsContainer != null && isSelected) {
                 documentsContainer.setVisible(false);
                 documentsContainer.setManaged(false);
-                // Vider la liste si on change de role
                 if (!documentsFiles.isEmpty()) {
                     documentsFiles.clear();
-                    documentsListView.getItems().clear();
+                    if (documentsListView != null) {
+                        documentsListView.getItems().clear();
+                    }
                     updateDocumentsStatus();
                 }
             }
         });
         
-        // Initialisation (Client par defaut, donc documents cache)
         if (documentsContainer != null) {
             documentsContainer.setVisible(false);
             documentsContainer.setManaged(false);
         }
         
-        // Creer le dossier d'upload s'il n'existe pas
+        // Creer le dossier d'upload
         try {
             Files.createDirectories(Paths.get(UPLOAD_DIR));
-            System.out.println("Dossier upload cree: " + Paths.get(UPLOAD_DIR).toAbsolutePath());
         } catch (IOException e) {
             System.err.println("Erreur creation dossier upload: " + e.getMessage());
         }
@@ -106,7 +107,6 @@ public class RegisterController {
         
         if (selectedFiles != null && !selectedFiles.isEmpty()) {
             for (File file : selectedFiles) {
-                // Verifier la taille du fichier (max 5 MB)
                 if (file.length() > 5 * 1024 * 1024) {
                     showError("Le fichier " + file.getName() + " depasse 5 Mo");
                     continue;
@@ -192,7 +192,6 @@ public class RegisterController {
 
         Role role = clientRadio.isSelected() ? Role.CLIENT : Role.PRODUCTEUR;
 
-        // Validations
         if (nom.isEmpty() || email.isEmpty() || password.isEmpty() ||
                 telephone.isEmpty() || adresse.isEmpty()) {
             showError("Tous les champs sont obligatoires");
@@ -214,9 +213,8 @@ public class RegisterController {
             return;
         }
         
-        // Verification des documents pour les producteurs
         if (role == Role.PRODUCTEUR && documentsFiles.isEmpty()) {
-            showError("Veuillez importer des documents justificatifs (cliquez sur 'Ajouter des fichiers')");
+            showError("Veuillez importer des documents justificatifs");
             return;
         }
 
@@ -224,7 +222,6 @@ public class RegisterController {
             String documentsPaths = "";
             if (role == Role.PRODUCTEUR) {
                 documentsPaths = saveDocuments(email);
-                System.out.println("Documents sauvegardes: " + documentsPaths);
             }
             
             boolean success = authService.register(nom, email, password, telephone, adresse, role, documentsPaths);
@@ -234,16 +231,10 @@ public class RegisterController {
                 if (role == Role.PRODUCTEUR) {
                     message = "VOTRE DEMANDE A ETE ENVOYEE A L'ADMINISTRATEUR\n\n" +
                               "Fichiers envoyes: " + documentsFiles.size() + " document(s)\n\n" +
-                              "Les documents suivants ont ete telecharges:\n";
-                    for (File f : documentsFiles) {
-                        message += "  - " + f.getName() + "\n";
-                    }
-                    message += "\nVous serez notifie par email une fois votre compte valide.\n\n" +
-                              "Le traitement peut prendre 24 a 48 heures.\n\n" +
+                              "Vous serez notifie par email une fois votre compte valide.\n\n" +
                               "Merci de votre confiance !";
                 } else {
-                    message = "Votre compte a ete cree avec succes !\n\n" +
-                              "Vous pouvez maintenant vous connecter.";
+                    message = "Votre compte a ete cree avec succes !\n\nVous pouvez maintenant vous connecter.";
                 }
                 
                 Alert alert = new Alert(Alert.AlertType.INFORMATION);
