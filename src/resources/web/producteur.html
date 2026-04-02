@@ -1,39 +1,564 @@
-// Dans la fonction producteurApp(), modifiez les références :
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Producteur - Kossam Welli</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        [x-cloak] { display: none !important; }
+        .toast { position: fixed; bottom: 20px; right: 20px; z-index: 1000; animation: slideIn 0.3s ease-out; }
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        .btn-primary { background: linear-gradient(135deg, #2c5f2d, #7bad50); transition: all 0.3s ease; }
+        .btn-primary:hover { transform: scale(1.02); box-shadow: 0 10px 25px -5px rgba(44, 95, 45, 0.4); }
+        .loading { text-align: center; padding: 50px; font-size: 18px; color: #666; }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen" x-data="producteurApp()" x-init="init()" x-cloak>
 
-loadProducts() {
-    if (window.javaApp && window.javaApp.getMyProducts) {
-        try {
-            const productsJson = window.javaApp.getMyProducts();
-            this.mesProduits = JSON.parse(productsJson);
-            // Assurez-vous que les champs correspondent
-            this.mesProduits = this.mesProduits.map(p => ({
-                id_produit: p.id_produit || p.id,
-                nom_produit: p.nom_produit || p.nom,
-                description: p.description,
-                prix: p.prix,
-                stock: p.stock,
-                unite: p.unite,
-                disponible: p.disponible
-            }));
-            this.stats.totalProduits = this.mesProduits.length;
-        } catch(e) { 
-            console.error('Erreur chargement produits:', e);
-            this.mesProduits = [];
+    <!-- Loading initial -->
+    <div x-show="loading" class="loading">
+        <i class="fas fa-spinner fa-spin text-4xl text-green-600 mb-4"></i>
+        <p>Chargement de l'application...</p>
+    </div>
+
+    <!-- Toast Notification -->
+    <div x-show="toast.show" x-transition class="toast" :class="toast.type === 'success' ? 'bg-green-500' : 'bg-red-500'" style="display: none;">
+        <div class="px-6 py-3 rounded-lg shadow-lg text-white flex items-center gap-2">
+            <i :class="toast.type === 'success' ? 'fas fa-check-circle' : 'fas fa-exclamation-circle'"></i>
+            <span x-text="toast.message"></span>
+        </div>
+    </div>
+
+    <!-- Navigation -->
+    <nav class="bg-white shadow-lg sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex items-center gap-3">
+                    <span class="text-3xl">🥛</span>
+                    <span class="font-bold text-xl text-green-600">Kossam Welli</span>
+                    <span class="text-sm text-gray-500">Espace Producteur</span>
+                </div>
+                <div class="flex items-center gap-4">
+                    <div class="text-right">
+                        <p class="text-sm font-medium text-gray-700" x-text="producteur.nom"></p>
+                        <p class="text-xs text-gray-500" x-text="producteur.email"></p>
+                    </div>
+                    <button @click="logout()" class="text-red-500 hover:text-red-700">
+                        <i class="fas fa-sign-out-alt"></i> Déconnexion
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="max-w-7xl mx-auto px-4 py-8">
+        
+        <!-- Statut du bridge -->
+        <div x-show="!bridgeAvailable" class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+            <i class="fas fa-exclamation-triangle mr-2"></i>
+            <strong>Erreur de connexion :</strong> Le pont Java n'est pas disponible. 
+            Veuillez vérifier que l'application est correctement lancée.
+        </div>
+        
+        <!-- Onglets -->
+        <div class="flex gap-2 mb-6 border-b">
+            <button @click="activeTab = 'dashboard'" 
+                    :class="activeTab === 'dashboard' ? 'border-green-500 text-green-600' : 'border-transparent text-gray-500'"
+                    class="px-4 py-2 border-b-2 font-medium transition">
+                📊 Dashboard
+            </button>
+            <button @click="activeTab = 'produits'"
+                    :class="activeTab === 'produits' ? 'border-green-500 text-green-600' : 'border-transparent text-gray-500'"
+                    class="px-4 py-2 border-b-2 font-medium transition">
+                📦 Mes Produits
+            </button>
+            <button @click="activeTab = 'commandes'"
+                    :class="activeTab === 'commandes' ? 'border-green-500 text-green-600' : 'border-transparent text-gray-500'"
+                    class="px-4 py-2 border-b-2 font-medium transition">
+                🚚 Commandes
+            </button>
+        </div>
+
+        <!-- DASHBOARD -->
+        <div x-show="activeTab === 'dashboard'" x-cloak>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <div class="bg-white rounded-xl shadow p-6">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-gray-500 text-sm">Total Produits</p>
+                            <p class="text-3xl font-bold text-green-600" x-text="stats.totalProduits">0</p>
+                        </div>
+                        <i class="fas fa-box text-4xl text-green-200"></i>
+                    </div>
+                </div>
+                <div class="bg-white rounded-xl shadow p-6">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-gray-500 text-sm">Commandes reçues</p>
+                            <p class="text-3xl font-bold text-blue-600" x-text="stats.totalCommandes">0</p>
+                        </div>
+                        <i class="fas fa-shopping-cart text-4xl text-blue-200"></i>
+                    </div>
+                </div>
+                <div class="bg-white rounded-xl shadow p-6">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-gray-500 text-sm">Chiffre d'affaires</p>
+                            <p class="text-3xl font-bold text-yellow-600" x-text="formatPrice(stats.ca)">0</p>
+                        </div>
+                        <i class="fas fa-chart-line text-4xl text-yellow-200"></i>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-xl shadow p-6">
+                <h3 class="font-bold text-lg mb-4">📦 Dernières commandes</h3>
+                <div class="space-y-3">
+                    <template x-for="commande in recentesCommandes" :key="commande.id_commande">
+                        <div class="border-b pb-3">
+                            <div class="flex justify-between">
+                                <span class="font-medium">Commande #<span x-text="commande.id_commande"></span></span>
+                                <span class="text-sm text-gray-500" x-text="formatDate(commande.date_commande)"></span>
+                            </div>
+                            <div class="flex justify-between text-sm mt-1">
+                                <span>Client: <span x-text="commande.client_nom"></span></span>
+                                <span class="font-bold text-green-600" x-text="formatPrice(commande.montant_total)"></span>
+                            </div>
+                        </div>
+                    </template>
+                    <div x-show="recentesCommandes.length === 0" class="text-center text-gray-500 py-4">
+                        Aucune commande récente
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- PRODUITS -->
+        <div x-show="activeTab === 'produits'" x-cloak>
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold text-gray-800">Mes Produits</h2>
+                <button @click="openProductModal()" class="btn-primary text-white px-5 py-2 rounded-lg font-semibold shadow-md transition">
+                    <i class="fas fa-plus mr-2"></i> Ajouter un produit
+                </button>
+            </div>
+
+            <!-- Filtres -->
+            <div class="bg-white rounded-xl shadow p-4 mb-6">
+                <div class="flex gap-4">
+                    <input type="text" x-model="searchProduct" placeholder="Rechercher un produit..."
+                           class="flex-1 px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500">
+                    <select x-model="statusFilter" class="px-4 py-2 border rounded-lg">
+                        <option value="">Tous</option>
+                        <option value="true">Disponibles</option>
+                        <option value="false">Indisponibles</option>
+                    </select>
+                    <button @click="loadProducts" class="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600">
+                        <i class="fas fa-sync-alt"></i> Rafraîchir
+                    </button>
+                </div>
+            </div>
+
+            <!-- Liste des produits -->
+            <div class="bg-white rounded-xl shadow overflow-hidden">
+                <table class="w-full">
+                    <thead class="bg-gray-50 border-b">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-sm font-medium text-gray-500">ID</th>
+                            <th class="px-6 py-3 text-left text-sm font-medium text-gray-500">Produit</th>
+                            <th class="px-6 py-3 text-left text-sm font-medium text-gray-500">Prix</th>
+                            <th class="px-6 py-3 text-left text-sm font-medium text-gray-500">Stock</th>
+                            <th class="px-6 py-3 text-left text-sm font-medium text-gray-500">Statut</th>
+                            <th class="px-6 py-3 text-left text-sm font-medium text-gray-500">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <template x-for="produit in filteredProducts" :key="produit.id_produit">
+                            <tr class="border-b hover:bg-gray-50">
+                                <td class="px-6 py-4 text-sm" x-text="produit.id_produit"></td>
+                                <td class="px-6 py-4">
+                                    <div>
+                                        <p class="font-medium" x-text="produit.nom_produit"></p>
+                                        <p class="text-xs text-gray-500" x-text="produit.description ? produit.description.substring(0, 50) : ''"></p>
+                                    </div>
+                                </td>
+                                <td class="px-6 py-4">
+                                    <span class="font-semibold text-green-600" x-text="formatPrice(produit.prix)"></span>
+                                    <span class="text-xs text-gray-500" x-text="'/' + produit.unite"></span>
+                                </td>
+                                <td class="px-6 py-4 text-sm" x-text="produit.stock"></td>
+                                <td class="px-6 py-4">
+                                    <span :class="produit.disponible ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'" 
+                                          class="px-2 py-1 rounded-full text-xs font-medium">
+                                        <span x-text="produit.disponible ? 'Disponible' : 'Indisponible'"></span>
+                                    </span>
+                                </td>
+                                <td class="px-6 py-4">
+                                    <div class="flex gap-2">
+                                        <button @click="toggleProductStatus(produit)" 
+                                                :title="produit.disponible ? 'Désactiver' : 'Activer'"
+                                                class="text-yellow-600 hover:text-yellow-800">
+                                            <i :class="produit.disponible ? 'fas fa-eye-slash' : 'fas fa-eye'"></i>
+                                        </button>
+                                        <button @click="editProduct(produit)" title="Modifier"
+                                                class="text-blue-600 hover:text-blue-800">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <button @click="deleteProduct(produit)" title="Supprimer"
+                                                class="text-red-600 hover:text-red-800">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        </template>
+                        <tr x-show="filteredProducts.length === 0">
+                            <td colspan="6" class="px-6 py-8 text-center text-gray-500">
+                                Aucun produit trouvé
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- COMMANDES -->
+        <div x-show="activeTab === 'commandes'" x-cloak>
+            <h2 class="text-2xl font-bold text-gray-800 mb-6">Commandes reçues</h2>
+            
+            <div class="space-y-4">
+                <template x-for="commande in commandesRecues" :key="commande.id_commande">
+                    <div class="bg-white rounded-xl shadow p-6">
+                        <div class="flex justify-between items-start mb-4">
+                            <div>
+                                <h3 class="font-bold text-lg">Commande #<span x-text="commande.id_commande"></span></h3>
+                                <p class="text-sm text-gray-500" x-text="formatDate(commande.date_commande)"></p>
+                                <p class="text-sm mt-1">Client: <span x-text="commande.client_nom"></span></p>
+                            </div>
+                            <div class="flex items-center gap-4">
+                                <select x-model="commande.statut" @change="updateOrderStatus(commande)"
+                                        class="px-3 py-1 border rounded-lg text-sm">
+                                    <option value="PANIER">🛒 Panier</option>
+                                    <option value="PAYEE">💰 Payée</option>
+                                    <option value="EN_PREPARATION">👨‍🍳 En préparation</option>
+                                    <option value="EXPEDIEE">🚚 Expédiée</option>
+                                    <option value="LIVREE">✅ Livrée</option>
+                                    <option value="ANNULEE">❌ Annulée</option>
+                                </select>
+                                <span class="text-2xl font-bold text-green-600" x-text="formatPrice(commande.montant_total)"></span>
+                            </div>
+                        </div>
+                        <div class="border-t pt-4">
+                            <p class="font-semibold mb-2">Détails :</p>
+                            <div class="space-y-1">
+                                <template x-for="detail in commande.details" :key="detail.id_detail">
+                                    <div class="flex justify-between text-sm">
+                                        <span x-text="detail.quantite + 'x ' + detail.nom_produit"></span>
+                                        <span x-text="formatPrice(detail.prix * detail.quantite)"></span>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+                <div x-show="commandesRecues.length === 0" class="text-center text-gray-500 py-12 bg-white rounded-xl">
+                    Aucune commande reçue
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Produit -->
+    <div x-show="showProductModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" x-cloak>
+        <div class="bg-white rounded-xl max-w-md w-full mx-4 p-6" @click.away="showProductModal = false">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold" x-text="editingProduct ? 'Modifier le produit' : 'Ajouter un produit'"></h3>
+                <button @click="showProductModal = false" class="text-gray-400 hover:text-gray-600">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            <form @submit.prevent="saveProduct">
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Nom du produit *</label>
+                        <input type="text" x-model="productForm.nom_produit" required
+                               class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Description</label>
+                        <textarea x-model="productForm.description" rows="3"
+                                  class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"></textarea>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-sm font-medium mb-1">Prix (FCFA) *</label>
+                            <input type="number" step="1" x-model="productForm.prix" required
+                                   class="w-full px-3 py-2 border rounded-lg">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-1">Stock *</label>
+                            <input type="number" x-model="productForm.stock" required
+                                   class="w-full px-3 py-2 border rounded-lg">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Unité</label>
+                        <select x-model="productForm.unite" class="w-full px-3 py-2 border rounded-lg">
+                            <option value="litre">Litre</option>
+                            <option value="kg">Kilogramme</option>
+                            <option value="unité">Unité</option>
+                            <option value="bouteille">Bouteille</option>
+                            <option value="pot">Pot</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="flex justify-end gap-3 mt-6">
+                    <button type="button" @click="showProductModal = false" class="px-4 py-2 border rounded-lg">Annuler</button>
+                    <button type="submit" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
+                        <span x-text="editingProduct ? 'Modifier' : 'Ajouter'"></span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+    function producteurApp() {
+        return {
+            // État
+            loading: true,
+            bridgeAvailable: false,
+            activeTab: 'dashboard',
+            
+            producteur: { id: null, nom: 'Chargement...', email: '', telephone: '', adresse: '' },
+            mesProduits: [],
+            commandesRecues: [],
+            stats: { totalProduits: 0, totalCommandes: 0, ca: 0 },
+            recentesCommandes: [],
+            searchProduct: '',
+            statusFilter: '',
+            showProductModal: false,
+            editingProduct: null,
+            productForm: { nom_produit: '', description: '', prix: 0, stock: 0, unite: 'litre' },
+            toast: { show: false, message: '', type: 'success' },
+
+            init() {
+                console.log("🚀 Application producteur démarrée");
+                
+                // Vérifier si le bridge Java est disponible
+                setTimeout(() => {
+                    if (typeof window.javaApp !== 'undefined') {
+                        console.log("✅ Bridge Java disponible");
+                        this.bridgeAvailable = true;
+                        this.loading = false;
+                        this.loadProducteurData();
+                        this.loadProducts();
+                        this.loadOrders();
+                    } else {
+                        console.error("❌ Bridge Java NON disponible");
+                        this.bridgeAvailable = false;
+                        this.loading = false;
+                        this.showToast('javaApp non disponible - Vérifiez la connexion Java', 'error');
+                    }
+                }, 500);
+            },
+
+            showToast(message, type = 'success') {
+                this.toast = { show: true, message, type };
+                setTimeout(() => { this.toast.show = false; }, 3000);
+            },
+
+            loadProducteurData() {
+                console.log("📋 Chargement producteur...");
+                if (window.javaApp && window.javaApp.getCurrentUser) {
+                    try {
+                        const userJson = window.javaApp.getCurrentUser();
+                        console.log("📋 JSON reçu:", userJson);
+                        if (userJson && userJson !== '{}') {
+                            this.producteur = JSON.parse(userJson);
+                            console.log("✅ Producteur chargé:", this.producteur.nom);
+                        } else {
+                            console.warn("⚠️ Aucun utilisateur connecté");
+                        }
+                    } catch(e) { 
+                        console.error('❌ Erreur:', e);
+                        this.showToast('Erreur chargement profil', 'error');
+                    }
+                } else {
+                    console.warn("⚠️ javaApp.getCurrentUser non disponible");
+                }
+            },
+
+            loadProducts() {
+                console.log("📦 Chargement produits...");
+                if (window.javaApp && window.javaApp.getMyProducts) {
+                    try {
+                        const productsJson = window.javaApp.getMyProducts();
+                        console.log("📦 JSON reçu:", productsJson);
+                        this.mesProduits = JSON.parse(productsJson);
+                        this.stats.totalProduits = this.mesProduits.length;
+                        console.log(`✅ ${this.mesProduits.length} produits chargés`);
+                        this.showToast(`${this.mesProduits.length} produits chargés`, 'success');
+                    } catch(e) { 
+                        console.error('❌ Erreur chargement produits:', e);
+                        this.showToast('Erreur chargement produits', 'error');
+                        this.mesProduits = [];
+                    }
+                } else {
+                    console.warn("⚠️ javaApp.getMyProducts non disponible");
+                    this.mesProduits = [];
+                }
+            },
+
+            loadOrders() {
+                console.log("🚚 Chargement commandes...");
+                if (window.javaApp && window.javaApp.getMyOrders) {
+                    try {
+                        const ordersJson = window.javaApp.getMyOrders();
+                        console.log("🚚 JSON reçu:", ordersJson);
+                        this.commandesRecues = JSON.parse(ordersJson);
+                        this.stats.totalCommandes = this.commandesRecues.length;
+                        this.recentesCommandes = [...this.commandesRecues].slice(0, 5);
+                        this.stats.ca = this.commandesRecues.reduce((sum, cmd) => sum + (cmd.montant_total || 0), 0);
+                        console.log(`✅ ${this.commandesRecues.length} commandes chargées`);
+                    } catch(e) { 
+                        console.error('❌ Erreur chargement commandes:', e);
+                        this.commandesRecues = [];
+                    }
+                }
+            },
+
+            get filteredProducts() {
+                return this.mesProduits.filter(p => {
+                    const matchSearch = (p.nom_produit || '').toLowerCase().includes(this.searchProduct.toLowerCase());
+                    const matchStatus = !this.statusFilter || String(p.disponible) === this.statusFilter;
+                    return matchSearch && matchStatus;
+                });
+            },
+
+            openProductModal() {
+                this.editingProduct = null;
+                this.productForm = { nom_produit: '', description: '', prix: 0, stock: 0, unite: 'litre' };
+                this.showProductModal = true;
+            },
+
+            editProduct(produit) {
+                this.editingProduct = produit;
+                this.productForm = { 
+                    nom_produit: produit.nom_produit, 
+                    description: produit.description || '', 
+                    prix: produit.prix, 
+                    stock: produit.stock, 
+                    unite: produit.unite 
+                };
+                this.showProductModal = true;
+            },
+
+            saveProduct() {
+                console.log("💾 Sauvegarde produit...");
+                
+                if (!window.javaApp) {
+                    this.showToast('javaApp non disponible', 'error');
+                    return;
+                }
+
+                if (!this.productForm.nom_produit || this.productForm.prix <= 0) {
+                    this.showToast('Veuillez remplir tous les champs', 'error');
+                    return;
+                }
+
+                const produitData = {
+                    nom_produit: this.productForm.nom_produit,
+                    description: this.productForm.description || "",
+                    prix: parseFloat(this.productForm.prix),
+                    stock: parseInt(this.productForm.stock),
+                    unite: this.productForm.unite
+                };
+
+                console.log("📦 Données envoyées:", produitData);
+
+                let result;
+                if (this.editingProduct) {
+                    produitData.id_produit = this.editingProduct.id_produit;
+                    result = window.javaApp.updateProduct(JSON.stringify(produitData));
+                } else {
+                    result = window.javaApp.createProduct(JSON.stringify(produitData));
+                }
+
+                if (result) {
+                    this.showToast(this.editingProduct ? 'Produit modifié !' : 'Produit ajouté !', 'success');
+                    this.showProductModal = false;
+                    this.loadProducts();
+                } else {
+                    this.showToast('Erreur lors de l\'opération', 'error');
+                }
+            },
+
+            toggleProductStatus(produit) {
+                if (window.javaApp && window.javaApp.toggleProductStatus) {
+                    const nouveauStatut = !produit.disponible;
+                    if (window.javaApp.toggleProductStatus(produit.id_produit, nouveauStatut)) {
+                        produit.disponible = nouveauStatut;
+                        this.showToast(`Produit ${nouveauStatut ? 'activé' : 'désactivé'}`, 'success');
+                        this.loadProducts();
+                    } else {
+                        this.showToast('Erreur changement statut', 'error');
+                    }
+                }
+            },
+
+            deleteProduct(produit) {
+                if (confirm(`Supprimer "${produit.nom_produit}" ?`)) {
+                    if (window.javaApp && window.javaApp.deleteProduct) {
+                        if (window.javaApp.deleteProduct(produit.id_produit)) {
+                            this.showToast('Produit supprimé', 'success');
+                            this.loadProducts();
+                        } else {
+                            this.showToast('Erreur suppression', 'error');
+                        }
+                    }
+                }
+            },
+
+            updateOrderStatus(commande) {
+                if (window.javaApp && window.javaApp.updateOrderStatus) {
+                    window.javaApp.updateOrderStatus(commande.id_commande, commande.statut);
+                    this.showToast('Statut mis à jour', 'success');
+                }
+            },
+
+            formatPrice(prix) {
+                if (!prix) return '0 FCFA';
+                return prix.toLocaleString('fr-FR') + ' FCFA';
+            },
+
+            formatDate(dateStr) {
+                if (!dateStr) return '';
+                try {
+                    const date = new Date(dateStr);
+                    if (isNaN(date.getTime())) return dateStr;
+                    return date.toLocaleDateString('fr-FR', {
+                        day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit'
+                    });
+                } catch(e) {
+                    return dateStr;
+                }
+            },
+
+            logout() {
+                if (window.javaApp && window.javaApp.logout) {
+                    window.javaApp.logout();
+                }
+            }
         }
     }
-},
-
-loadOrders() {
-    if (window.javaApp && window.javaApp.getMyOrders) {
-        try {
-            const ordersJson = window.javaApp.getMyOrders();
-            this.commandesRecues = JSON.parse(ordersJson);
-            this.stats.totalCommandes = this.commandesRecues.length;
-            this.recentesCommandes = [...this.commandesRecues].slice(0, 5);
-            this.stats.ca = this.commandesRecues.reduce((sum, cmd) => sum + (cmd.montant_total || 0), 0);
-        } catch(e) { 
-            console.error('Erreur chargement commandes:', e);
-            this.commandesRecues = [];
-        }
-    }
-},
+    </script>
+</body>
+</html>
