@@ -2,6 +2,7 @@ package dao;
 
 import modele.Utilisateur;
 import modele.Utilisateur.Role;
+import modele.Utilisateur.StatutValidation;
 import org.mindrot.jbcrypt.BCrypt;
 
 import java.sql.*;
@@ -17,7 +18,7 @@ public class UtilisateurDAO {
             case "client" -> Role.CLIENT;
             case "producteur" -> Role.PRODUCTEUR;
             case "administrateur" -> Role.ADMIN;
-            default -> throw new IllegalArgumentException("Rôle inconnu: " + dbRole);
+            default -> Role.CLIENT;
         };
     }
 
@@ -28,10 +29,28 @@ public class UtilisateurDAO {
             case ADMIN -> "administrateur";
         };
     }
+    
+    private StatutValidation mapStatutFromDatabase(String dbStatut) {
+        if (dbStatut == null) return StatutValidation.VALIDE;
+        return switch (dbStatut.toUpperCase()) {
+            case "EN_ATTENTE" -> StatutValidation.EN_ATTENTE;
+            case "VALIDE" -> StatutValidation.VALIDE;
+            case "REJETE" -> StatutValidation.REJETE;
+            default -> StatutValidation.VALIDE;
+        };
+    }
+    
+    private String mapStatutToDatabase(StatutValidation statut) {
+        return switch (statut) {
+            case EN_ATTENTE -> "EN_ATTENTE";
+            case VALIDE -> "VALIDE";
+            case REJETE -> "REJETE";
+        };
+    }
 
     public int create(Utilisateur user) {
-        String sql = "INSERT INTO utilisateurs (nom, email, mot_de_passe, telephone, adresse, role, is_active) " +
-                     "VALUES (?, ?, ?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO utilisateurs (nom, email, mot_de_passe, telephone, adresse, role, is_active, statut_validation, date_demande) " +
+                     "VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())";
 
         String hashedPassword = BCrypt.hashpw(user.getMotDePasse(), BCrypt.gensalt(12));
 
@@ -45,6 +64,7 @@ public class UtilisateurDAO {
             stmt.setString(5, user.getAdresse());
             stmt.setString(6, mapRoleToDatabase(user.getRole()));
             stmt.setBoolean(7, user.isActive());
+            stmt.setString(8, mapStatutToDatabase(user.getStatutValidation()));
 
             int affectedRows = stmt.executeUpdate();
 
@@ -54,17 +74,14 @@ public class UtilisateurDAO {
                 }
             }
         } catch (SQLException e) {
-            if (e.getMessage().contains("Duplicate entry")) {
-                System.err.println("❌ Email déjà utilisé: " + user.getEmail());
-            } else {
-                System.err.println("❌ Erreur création utilisateur: " + e.getMessage());
-            }
+            System.err.println("❌ Erreur création utilisateur: " + e.getMessage());
         }
         return -1;
     }
 
     public Optional<Utilisateur> authenticate(String email, String password) {
-        String sql = "SELECT * FROM utilisateurs WHERE email = ? AND is_active = true";
+        String sql = "SELECT * FROM utilisateurs WHERE email = ? AND is_active = true " +
+                     "AND (role != 'producteur' OR statut_validation = 'VALIDE')";
 
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
@@ -84,6 +101,74 @@ public class UtilisateurDAO {
         return Optional.empty();
     }
 
+    public List<Utilisateur> findAll() {
+        List<Utilisateur> users = new ArrayList<>();
+        String sql = "SELECT * FROM utilisateurs ORDER BY date_creation DESC";
+
+        try (Connection conn = DatabaseConnection.getConnection();
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+
+            while (rs.next()) {
+                users.add(mapResultSetToUser(rs));
+            }
+        } catch (SQLException e) {
+            System.err.println("❌ Erreur liste utilisateurs: " + e.getMessage());
+        }
+        return users;
+    }
+    
+    public List<Utilisateur> findProducteursEnAttente() {
+        List<Utilisateur> users = new ArrayList<>();
+        String sql = "SELECT * FROM utilisateurs WHERE role = 'producteur' AND statut_validation = 'EN_ATTENTE' ORDER BY date_demande ASC";
+
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql);
+             ResultSet rs = stmt.executeQuery()) {
+
+            while (rs.next()) {
+                users.add(mapResultSetToUser(rs));
+            }
+        } catch (SQLException e) {
+            System.err.println("❌ Erreur findProducteursEnAttente: " + e.getMessage());
+        }
+        return users;
+    }
+    
+    public boolean validerProducteur(int userId, boolean valider, String commentaire) {
+        String sql = "UPDATE utilisateurs SET statut_validation = ?, date_validation = NOW(), commentaire_validation = ? WHERE id = ?";
+        String statut = valider ? "VALIDE" : "REJETE";
+
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setString(1, statut);
+            stmt.setString(2, commentaire);
+            stmt.setInt(3, userId);
+            return stmt.executeUpdate() > 0;
+        } catch (SQLException e) {
+            System.err.println("❌ Erreur validerProducteur: " + e.getMessage());
+            return false;
+        }
+    }
+    
+    public boolean isProducteurValide(int userId) {
+        String sql = "SELECT statut_validation FROM utilisateurs WHERE id = ? AND role = 'producteur'";
+
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setInt(1, userId);
+            ResultSet rs = stmt.executeQuery();
+            if (rs.next()) {
+                return "VALIDE".equals(rs.getString("statut_validation"));
+            }
+        } catch (SQLException e) {
+            System.err.println("❌ Erreur isProducteurValide: " + e.getMessage());
+        }
+        return false;
+    }
+
     public Optional<Utilisateur> findById(int id) {
         String sql = "SELECT * FROM utilisateurs WHERE id = ?";
 
@@ -100,23 +185,6 @@ public class UtilisateurDAO {
             System.err.println("❌ Erreur recherche utilisateur: " + e.getMessage());
         }
         return Optional.empty();
-    }
-
-    public List<Utilisateur> findAll() {
-        List<Utilisateur> users = new ArrayList<>();
-        String sql = "SELECT * FROM utilisateurs ORDER BY date_creation DESC";
-
-        try (Connection conn = DatabaseConnection.getConnection();
-             Statement stmt = conn.createStatement();
-             ResultSet rs = stmt.executeQuery(sql)) {
-
-            while (rs.next()) {
-                users.add(mapResultSetToUser(rs));
-            }
-        } catch (SQLException e) {
-            System.err.println("❌ Erreur liste utilisateurs: " + e.getMessage());
-        }
-        return users;
     }
 
     public boolean toggleActive(int userId, boolean active) {
@@ -144,6 +212,7 @@ public class UtilisateurDAO {
         user.setAdresse(rs.getString("adresse"));
         user.setRole(mapRoleFromDatabase(rs.getString("role")));
         user.setActive(rs.getBoolean("is_active"));
+        user.setStatutValidation(mapStatutFromDatabase(rs.getString("statut_validation")));
         return user;
     }
 }

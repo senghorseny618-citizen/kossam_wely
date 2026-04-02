@@ -175,6 +175,34 @@ public class MainApp extends Application {
                 showLoginView();
             });
         }
+     // ==================== MÉTHODES ADMIN POUR VALIDATION PRODUCTEUR ====================
+
+        public String getProducteursEnAttente() {
+            if (!authService.isAdmin()) return "[]";
+            List<Utilisateur> producteurs = utilisateurDAO.findProducteursEnAttente();
+            JSONArray jsonArray = new JSONArray();
+            for (Utilisateur p : producteurs) {
+                JSONObject obj = new JSONObject();
+                obj.put("id", p.getId());
+                obj.put("nom", p.getNom());
+                obj.put("email", p.getEmail());
+                obj.put("telephone", p.getTelephone());
+                obj.put("adresse", p.getAdresse());
+                obj.put("documents", p.getDocumentsJustificatifs() != null ? p.getDocumentsJustificatifs() : "");
+                obj.put("dateDemande", p.getDateDemande() != null ? p.getDateDemande() : "");
+                jsonArray.put(obj);
+            }
+            return jsonArray.toString();
+        }
+
+        public boolean validerProducteur(int userId, boolean valider, String commentaire) {
+            if (!authService.isAdmin()) return false;
+            return utilisateurDAO.validerProducteur(userId, valider, commentaire);
+        }
+
+        public boolean isProducteurValide(int userId) {
+            return utilisateurDAO.isProducteurValide(userId);
+        }
         
         // ==================== MÉTHODES PRODUCTEUR ====================
         

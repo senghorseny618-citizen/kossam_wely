@@ -1,41 +1,31 @@
 package modele;
 
-/**
- * Représente un utilisateur du système (Client, Producteur, ou Admin)
- *
- * Concepts importants :
- * - ENUM Role : type sûr, valeurs limitées (impossible de mettre "clien" au lieu de "CLIENT")
- * - Encapsulation : tous les champs private, accès via getters/setters
- * - isActive : permet de désactiver un compte sans le supprimer (soft delete)
- */
 public class Utilisateur {
 
-    /**
-     * Enumération des rôles possibles
-     * CLIENT    : peut acheter des produits
-     * PRODUCTEUR : peut vendre des produits
-     * ADMIN     : gère la plateforme
-     */
     public enum Role {
         CLIENT, PRODUCTEUR, ADMIN
     }
+    
+    public enum StatutValidation {
+        EN_ATTENTE, VALIDE, REJETE
+    }
 
-    // Attributs privés (encapsulation - protection des données)
     private int id;
     private String nom;
     private String email;
-    private String motDePasse;   // Stocké hashé avec BCrypt ! Jamais en clair.
-    private String telephone;      // Pour contacter l'utilisateur
-    private String adresse;        // Pour la livraison
+    private String motDePasse;
+    private String telephone;
+    private String adresse;
     private Role role;
-    private boolean isActive;      // Compte actif ou désactivé
+    private boolean isActive;
+    private StatutValidation statutValidation;
+    private String dateDemande;
+    private String dateValidation;
+    private String commentaireValidation;
+    private String documentsJustificatifs;
 
-    // Constructeur vide (nécessaire pour certaines librairies comme Hibernate ou JSON)
     public Utilisateur() {}
 
-    /**
-     * Constructeur complet (sauf ID qui est auto-généré par MySQL)
-     */
     public Utilisateur(String nom, String email, String motDePasse,
                        String telephone, String adresse, Role role) {
         this.nom = nom;
@@ -44,112 +34,50 @@ public class Utilisateur {
         this.telephone = telephone;
         this.adresse = adresse;
         this.role = role;
-        this.isActive = true; // Par défaut, compte actif à la création
+        this.isActive = true;
+        this.statutValidation = (role == Role.PRODUCTEUR) ? StatutValidation.EN_ATTENTE : StatutValidation.VALIDE;
     }
 
-    // ============ GETTERS & SETTERS ============
+    // Getters et Setters
+    public int getId() { return id; }
+    public void setId(int id) { this.id = id; }
+    public String getNom() { return nom; }
+    public void setNom(String nom) { this.nom = nom; }
+    public String getEmail() { return email; }
+    public void setEmail(String email) { this.email = email; }
+    public String getMotDePasse() { return motDePasse; }
+    public void setMotDePasse(String motDePasse) { this.motDePasse = motDePasse; }
+    public String getTelephone() { return telephone; }
+    public void setTelephone(String telephone) { this.telephone = telephone; }
+    public String getAdresse() { return adresse; }
+    public void setAdresse(String adresse) { this.adresse = adresse; }
+    public Role getRole() { return role; }
+    public void setRole(Role role) { this.role = role; }
+    public boolean isActive() { return isActive; }
+    public void setActive(boolean active) { isActive = active; }
+    public StatutValidation getStatutValidation() { return statutValidation; }
+    public void setStatutValidation(StatutValidation statutValidation) { this.statutValidation = statutValidation; }
+    public String getDateDemande() { return dateDemande; }
+    public void setDateDemande(String dateDemande) { this.dateDemande = dateDemande; }
+    public String getDateValidation() { return dateValidation; }
+    public void setDateValidation(String dateValidation) { this.dateValidation = dateValidation; }
+    public String getCommentaireValidation() { return commentaireValidation; }
+    public void setCommentaireValidation(String commentaireValidation) { this.commentaireValidation = commentaireValidation; }
+    public String getDocumentsJustificatifs() { return documentsJustificatifs; }
+    public void setDocumentsJustificatifs(String documentsJustificatifs) { this.documentsJustificatifs = documentsJustificatifs; }
 
-    public int getId() {
-        return id;
-    }
-
-    public void setId(int id) {
-        this.id = id;
-    }
-
-    public String getNom() {
-        return nom;
-    }
-
-    public void setNom(String nom) {
-        this.nom = nom;
-    }
-
-    public String getEmail() {
-        return email;
-    }
-
-    public void setEmail(String email) {
-        this.email = email;
-    }
-
-    public String getMotDePasse() {
-        return motDePasse;
-    }
-
-    public void setMotDePasse(String motDePasse) {
-        this.motDePasse = motDePasse;
-    }
-
-    public String getTelephone() {
-        return telephone;
-    }
-
-    public void setTelephone(String telephone) {
-        this.telephone = telephone;
-    }
-
-    public String getAdresse() {
-        return adresse;
-    }
-
-    public void setAdresse(String adresse) {
-        this.adresse = adresse;
-    }
-
-    public Role getRole() {
-        return role;
-    }
-
-    public void setRole(Role role) {
-        this.role = role;
-    }
-
-    public boolean isActive() {
-        return isActive;
-    }
-
-    public void setActive(boolean active) {
-        isActive = active;
-    }
-
-    // ============ MÉTHODES MÉTIERS ============
-
-    /**
-     * Convertit l'utilisateur en JSON (pour communication avec JavaScript)
-     *  EXCLUT le mot de passe pour la sécurité !
-     */
     public String toJson() {
         return String.format(
-                "{\"id\":%d,\"nom\":\"%s\",\"email\":\"%s\",\"telephone\":\"%s\",\"adresse\":\"%s\",\"role\":\"%s\",\"isActive\":%b}",
-                id,
-                escapeJson(nom),
-                escapeJson(email),
-                escapeJson(telephone),
-                escapeJson(adresse),
-                role,
-                isActive
+                "{\"id\":%d,\"nom\":\"%s\",\"email\":\"%s\",\"telephone\":\"%s\",\"adresse\":\"%s\",\"role\":\"%s\",\"isActive\":%b,\"statutValidation\":\"%s\"}",
+                id, escapeJson(nom), escapeJson(email), escapeJson(telephone), 
+                escapeJson(adresse), role, isActive, statutValidation != null ? statutValidation.name() : "VALIDE"
         );
     }
 
-    /**
-     * Échappe les caractères spéciaux JSON pour éviter les injections
-     */
     private String escapeJson(String str) {
         if (str == null) return "";
         return str.replace("\"", "\\\"")
                 .replace("\n", "\\n")
                 .replace("\r", "\\r");
-    }
-
-    @Override
-    public String toString() {
-        return "Utilisateur{" +
-                "id=" + id +
-                ", nom='" + nom + '\'' +
-                ", email='" + email + '\'' +
-                ", role=" + role +
-                ", isActive=" + isActive +
-                '}';
     }
 }

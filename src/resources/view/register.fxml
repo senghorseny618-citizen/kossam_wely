@@ -1,130 +1,98 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<?import javafx.geometry.*?>
-<?import javafx.scene.control.*?>
-<?import javafx.scene.layout.*?>
-<?import javafx.scene.text.*?>
-
-<!--
-  Vue d'inscription avec :
-  - Champs standard (nom, email, mot de passe)
-  - Nouveaux champs : téléphone, adresse
-  - Sélection du rôle (Client ou Producteur)
-  - Validation en temps réel
--->
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ListView?>
+<?import javafx.scene.control.PasswordField?>
+<?import javafx.scene.control.RadioButton?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.control.TextArea?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.control.ToggleGroup?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
 
 <BorderPane xmlns="http://javafx.com/javafx/21"
             xmlns:fx="http://javafx.com/fxml/1"
             fx:controller="controller.RegisterController"
-            style="-fx-background-color: linear-gradient(to bottom right, #f0f9ff, #e0f2fe);"
-            prefHeight="700.0" prefWidth="900.0">
+            style="-fx-background-color: #e8ecf2;">
 
     <center>
         <ScrollPane fitToWidth="true" style="-fx-background: transparent;">
-            <VBox alignment="CENTER" spacing="20.0" style="-fx-padding: 30;">
-
-                <!-- En-tête -->
-                <VBox alignment="CENTER" spacing="8">
-                    <Label text="🐄" style="-fx-font-size: 42;"/>
-                    <Label text="Créer un compte"
-                           style="-fx-font-size: 26; -fx-font-weight: bold; -fx-text-fill: #0c4a6e;"/>
-                    <Label text="Rejoignez la communauté du lait frais"
-                           style="-fx-font-size: 13; -fx-text-fill: #64748b;"/>
-                </VBox>
-
-                <!-- Formulaire -->
-                <GridPane vgap="12" hgap="15" alignment="CENTER"
-                          style="-fx-background-color: white; -fx-padding: 35; -fx-background-radius: 16; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.08), 20, 0, 0, 8);">
-
-                    <columnConstraints>
-                        <ColumnConstraints minWidth="120" prefWidth="140"/>
-                        <ColumnConstraints minWidth="250" prefWidth="300"/>
-                    </columnConstraints>
-
-                    <!-- Nom complet -->
-                    <Label text="Nom complet *" style="-fx-font-weight: bold; -fx-text-fill: #334155;"
-                           GridPane.rowIndex="0" GridPane.columnIndex="0"/>
-                    <TextField fx:id="nomField" promptText="Jean Dupont"
-                               style="-fx-padding: 10; -fx-background-radius: 8; -fx-border-color: #e2e8f0; -fx-border-radius: 8;"
-                               GridPane.rowIndex="0" GridPane.columnIndex="1"/>
-
-                    <!-- Email -->
-                    <Label text="Email *" style="-fx-font-weight: bold; -fx-text-fill: #334155;"
-                           GridPane.rowIndex="1" GridPane.columnIndex="0"/>
-                    <TextField fx:id="emailField" promptText="jean@email.com"
-                               style="-fx-padding: 10; -fx-background-radius: 8; -fx-border-color: #e2e8f0; -fx-border-radius: 8;"
-                               GridPane.rowIndex="1" GridPane.columnIndex="1"/>
-
-                    <!-- Mot de passe -->
-                    <Label text="Mot de passe *" style="-fx-font-weight: bold; -fx-text-fill: #334155;"
-                           GridPane.rowIndex="2" GridPane.columnIndex="0"/>
-                    <PasswordField fx:id="passwordField" promptText="Minimum 6 caractères"
-                                   style="-fx-padding: 10; -fx-background-radius: 8; -fx-border-color: #e2e8f0; -fx-border-radius: 8;"
-                                   GridPane.rowIndex="2" GridPane.columnIndex="1"/>
-
-                    <!-- Confirmation mot de passe -->
-                    <Label text="Confirmation *" style="-fx-font-weight: bold; -fx-text-fill: #334155;"
-                           GridPane.rowIndex="3" GridPane.columnIndex="0"/>
-                    <PasswordField fx:id="confirmPasswordField" promptText="Répétez le mot de passe"
-                                   style="-fx-padding: 10; -fx-background-radius: 8; -fx-border-color: #e2e8f0; -fx-border-radius: 8;"
-                                   GridPane.rowIndex="3" GridPane.columnIndex="1"/>
-
-                    <!-- Téléphone (NOUVEAU) -->
-                    <Label text="Téléphone *" style="-fx-font-weight: bold; -fx-text-fill: #334155;"
-                           GridPane.rowIndex="4" GridPane.columnIndex="0"/>
-                    <TextField fx:id="telephoneField" promptText="06 12 34 56 78"
-                               style="-fx-padding: 10; -fx-background-radius: 8; -fx-border-color: #e2e8f0; -fx-border-radius: 8;"
-                               GridPane.rowIndex="4" GridPane.columnIndex="1"/>
-
-                    <!-- Adresse (NOUVEAU) -->
-                    <Label text="Adresse *" style="-fx-font-weight: bold; -fx-text-fill: #334155;"
-                           GridPane.rowIndex="5" GridPane.columnIndex="0"/>
-                    <TextArea fx:id="adresseField" promptText="12 Rue du Lait&#10;75000 Paris"
-                              style="-fx-padding: 10; -fx-background-radius: 8; -fx-border-color: #e2e8f0; -fx-border-radius: 8;"
-                              prefRowCount="2" wrapText="true"
-                              GridPane.rowIndex="5" GridPane.columnIndex="1"/>
-
-                    <!-- Rôle (NOUVEAU) -->
-                    <Label text="Vous êtes *" style="-fx-font-weight: bold; -fx-text-fill: #334155;"
-                           GridPane.rowIndex="6" GridPane.columnIndex="0"/>
-                    <HBox spacing="15" alignment="CENTER_LEFT" GridPane.rowIndex="6" GridPane.columnIndex="1">
-                        <RadioButton fx:id="clientRadio" text="Client (j'achète)" selected="true">
-                            <toggleGroup>
-                                <ToggleGroup fx:id="roleGroup"/>
-                            </toggleGroup>
+            <VBox alignment="CENTER" spacing="20" style="-fx-padding: 30;">
+                
+                <VBox alignment="CENTER" spacing="15"
+                      style="-fx-background-color: white; -fx-background-radius: 20; -fx-padding: 30;"
+                      maxWidth="550">
+                    
+                    <!-- En-tete -->
+                    <Label text="KOSSAM WELLI" style="-fx-font-size: 24; -fx-font-weight: bold; -fx-text-fill: #2c5f2d;"/>
+                    <Label text="Creer un compte" style="-fx-font-size: 18; -fx-font-weight: bold;"/>
+                    <Label text="Rejoignez notre communaute" style="-fx-font-size: 11; -fx-text-fill: gray;"/>
+                    
+                    <!-- Formulaire -->
+                    <TextField fx:id="nomField" promptText="Nom complet" maxWidth="Infinity"/>
+                    <TextField fx:id="emailField" promptText="Email" maxWidth="Infinity"/>
+                    <PasswordField fx:id="passwordField" promptText="Mot de passe" maxWidth="Infinity"/>
+                    <PasswordField fx:id="confirmPasswordField" promptText="Confirmer le mot de passe" maxWidth="Infinity"/>
+                    <TextField fx:id="telephoneField" promptText="Telephone" maxWidth="Infinity"/>
+                    <TextArea fx:id="adresseField" promptText="Adresse complete" prefRowCount="2" maxWidth="Infinity"/>
+                    
+                    <HBox spacing="20">
+                        <RadioButton fx:id="clientRadio" text="Client" selected="true">
+                            <toggleGroup><ToggleGroup fx:id="roleGroup"/></toggleGroup>
                         </RadioButton>
-                        <RadioButton fx:id="producteurRadio" text="Producteur (je vends)" toggleGroup="$roleGroup"/>
+                        <RadioButton fx:id="producteurRadio" text="Producteur" toggleGroup="$roleGroup"/>
                     </HBox>
-
-                    <!-- Message d'erreur -->
+                    
+                    <!-- Zone de telechargement des documents (visible seulement pour producteur) -->
+                    <VBox fx:id="documentsContainer" visible="false" managed="false" spacing="10" maxWidth="Infinity">
+                        <Label text="Documents justificatifs" style="-fx-font-weight: bold; -fx-text-fill: #495057;"/>
+                        
+                        <!-- Boutons d'action -->
+                        <HBox spacing="10">
+                            <Button onAction="#ajouterDocument" 
+                                    style="-fx-background-color: #2c5f2d; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 8 15; -fx-background-radius: 20;">
+                                <Label text="+ Ajouter des fichiers"/>
+                            </Button>
+                            <Button onAction="#supprimerDocument" 
+                                    style="-fx-background-color: #dc3545; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 8 15; -fx-background-radius: 20;">
+                                <Label text="- Supprimer"/>
+                            </Button>
+                            <Button onAction="#viderListe" 
+                                    style="-fx-background-color: #6c757d; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 8 15; -fx-background-radius: 20;">
+                                <Label text="Vider tout"/>
+                            </Button>
+                        </HBox>
+                        
+                        <!-- Liste des fichiers selectionnes -->
+                        <ListView fx:id="documentsListView" prefHeight="120" 
+                                  style="-fx-background-color: #f8f9fa; -fx-background-radius: 10; -fx-border-color: #e9ecef; -fx-border-radius: 10;"/>
+                        
+                        <!-- Information sur les fichiers -->
+                        <Label fx:id="documentsStatusLabel" text="Aucun fichier selectionne" 
+                               style="-fx-font-size: 11; -fx-text-fill: #dc3545;"/>
+                        
+                        <Label text="Formats acceptes: JPG, PNG, PDF (max 5 Mo par fichier)" 
+                               style="-fx-font-size: 10; -fx-fill: #6c757d;"/>
+                    </VBox>
+                    
                     <Label fx:id="errorLabel" text="" wrapText="true"
-                           style="-fx-text-fill: #dc2626; -fx-font-size: 12; -fx-padding: 5 0;"
-                           visible="false" managed="false"
-                           GridPane.rowIndex="7" GridPane.columnIndex="0" GridPane.columnSpan="2"/>
-
-                    <!-- Boutons d'action -->
-                    <HBox spacing="15" alignment="CENTER" GridPane.rowIndex="8" GridPane.columnIndex="0" GridPane.columnSpan="2" style="-fx-padding: 15 0 0 0;">
-                        <Button fx:id="backButton" text="← Retour" onAction="#goBackToLogin"
-                                style="-fx-background-color: #f1f5f9; -fx-text-fill: #475569; -fx-font-weight: bold; -fx-padding: 12 24; -fx-background-radius: 8; -fx-cursor: hand;"/>
-
-                        <Button fx:id="registerButton" text="Créer mon compte" onAction="#handleRegister"
-                                style="-fx-background-color: #0284c7; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 12 30; -fx-background-radius: 8; -fx-cursor: hand;"/>
-                    </HBox>
-
-                </GridPane>
-
-                <!-- Note légale -->
-                <Label text="* Champs obligatoires"
-                       style="-fx-text-fill: #94a3b8; -fx-font-size: 11;"/>
-
+                           style="-fx-text-fill: #dc3545; -fx-font-size: 11; -fx-background-color: #fee; -fx-background-radius: 5; -fx-padding: 5;"
+                           visible="false" managed="false"/>
+                    
+                    <Button fx:id="registerButton" text="CREER MON COMPTE" onAction="#handleRegister"
+                            style="-fx-background-color: #2c5f2d; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 10; -fx-background-radius: 20;"
+                            maxWidth="Infinity"/>
+                    
+                    <Button fx:id="backButton" text="Retour a la connexion" onAction="#goBackToLogin"
+                            style="-fx-background-color: transparent; -fx-text-fill: #2c5f2d; -fx-border-color: #2c5f2d; -fx-border-radius: 20; -fx-padding: 8;"
+                            maxWidth="Infinity"/>
+                    
+                </VBox>
             </VBox>
         </ScrollPane>
     </center>
-
-    <bottom>
-        <Label text="Déjà inscrit ? Connectez-vous depuis l'écran de connexion"
-               style="-fx-text-fill: #64748b; -fx-font-size: 12; -fx-padding: 0 0 20 0;"
-               BorderPane.alignment="CENTER"/>
-    </bottom>
-
 </BorderPane>
