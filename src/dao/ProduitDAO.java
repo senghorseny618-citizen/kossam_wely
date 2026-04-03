@@ -21,7 +21,14 @@ public class ProduitDAO {
             stmt.setString(5, produit.getUnite());
             stmt.setInt(6, produit.getProducteurId());
             stmt.setBoolean(7, produit.isDisponible());
-            stmt.setString(8, produit.getImageUrl());
+            
+            // Tronquer l'image_url si elle est trop longue (optionnel)
+            String imageUrl = produit.getImageUrl();
+            if (imageUrl != null && imageUrl.length() > 5000) {
+                imageUrl = imageUrl.substring(0, 5000);
+                System.out.println("⚠️ Image URL tronquee à 5000 caracteres");
+            }
+            stmt.setString(8, imageUrl);
 
             int affectedRows = stmt.executeUpdate();
 
@@ -33,7 +40,8 @@ public class ProduitDAO {
                 }
             }
         } catch (SQLException e) {
-            System.err.println("❌ Erreur création produit: " + e.getMessage());
+            System.err.println("Erreur creation produit: " + e.getMessage());
+            e.printStackTrace();
         }
         return -1;
     }
@@ -55,7 +63,7 @@ public class ProduitDAO {
                 produits.add(p);
             }
         } catch (SQLException e) {
-            System.err.println("❌ Erreur findAllAvailable: " + e.getMessage());
+            System.err.println("Erreur findAllAvailable: " + e.getMessage());
         }
         return produits;
     }
@@ -74,7 +82,7 @@ public class ProduitDAO {
                 produits.add(mapResultSetToProduit(rs));
             }
         } catch (SQLException e) {
-            System.err.println("❌ Erreur findByProducteur: " + e.getMessage());
+            System.err.println("Erreur findByProducteur: " + e.getMessage());
         }
         return produits;
     }
@@ -96,7 +104,7 @@ public class ProduitDAO {
                 return p;
             }
         } catch (SQLException e) {
-            System.err.println("❌ Erreur findById: " + e.getMessage());
+            System.err.println("Erreur findById: " + e.getMessage());
         }
         return null;
     }
@@ -113,73 +121,71 @@ public class ProduitDAO {
             stmt.setInt(4, produit.getStock());
             stmt.setString(5, produit.getUnite());
             stmt.setBoolean(6, produit.isDisponible());
-            stmt.setString(7, produit.getImageUrl());
+            
+            // Tronquer l'image_url si elle est trop longue
+            String imageUrl = produit.getImageUrl();
+            if (imageUrl != null && imageUrl.length() > 5000) {
+                imageUrl = imageUrl.substring(0, 5000);
+            }
+            stmt.setString(7, imageUrl);
             stmt.setInt(8, produit.getId());
 
             return stmt.executeUpdate() > 0;
         } catch (SQLException e) {
-            System.err.println("❌ Erreur update produit: " + e.getMessage());
+            System.err.println("Erreur update produit: " + e.getMessage());
             return false;
         }
     }
 
     public boolean delete(int produitId) {
         String sql = "UPDATE produits SET disponible = false WHERE id = ?";
-
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
-
             stmt.setInt(1, produitId);
             return stmt.executeUpdate() > 0;
         } catch (SQLException e) {
-            System.err.println("❌ Erreur delete produit: " + e.getMessage());
+            System.err.println("Erreur delete produit: " + e.getMessage());
             return false;
         }
     }
 
     public boolean toggleDisponible(int produitId, boolean disponible) {
         String sql = "UPDATE produits SET disponible = ? WHERE id = ?";
-
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
-
             stmt.setBoolean(1, disponible);
             stmt.setInt(2, produitId);
             return stmt.executeUpdate() > 0;
         } catch (SQLException e) {
-            System.err.println("❌ Erreur toggleDisponible: " + e.getMessage());
+            System.err.println("Erreur toggleDisponible: " + e.getMessage());
             return false;
         }
     }
 
     public boolean updateStock(int produitId, int newStock) {
         String sql = "UPDATE produits SET stock = ? WHERE id = ?";
-
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
-
             stmt.setInt(1, newStock);
             stmt.setInt(2, produitId);
             return stmt.executeUpdate() > 0;
         } catch (SQLException e) {
-            System.err.println("❌ Erreur updateStock: " + e.getMessage());
+            System.err.println("Erreur updateStock: " + e.getMessage());
             return false;
         }
     }
 
     public int countByProducteur(int producteurId) {
         String sql = "SELECT COUNT(*) FROM produits WHERE producteur_id = ?";
-
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
-
             stmt.setInt(1, producteurId);
             ResultSet rs = stmt.executeQuery();
             if (rs.next()) {
                 return rs.getInt(1);
             }
         } catch (SQLException e) {
-            System.err.println("❌ Erreur countByProducteur: " + e.getMessage());
+            System.err.println("Erreur countByProducteur: " + e.getMessage());
         }
         return 0;
     }

@@ -5,11 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Client - Kossam Welli</title>
     
-    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Alpine.js -->
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
-    <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <style>
@@ -18,10 +15,6 @@
         @keyframes fadeInUp {
             from { opacity: 0; transform: translateY(20px); }
             to { opacity: 1; transform: translateY(0); }
-        }
-        
-        .animate-fadeInUp {
-            animation: fadeInUp 0.5s ease-out;
         }
         
         .product-card {
@@ -65,22 +58,44 @@
             transform: scale(1.1);
         }
         
-        ::-webkit-scrollbar {
-            width: 8px;
+        .product-image {
+            width: 100%;
+            height: 180px;
+            object-fit: cover;
+            transition: transform 0.3s ease;
         }
         
-        ::-webkit-scrollbar-track {
-            background: #f1f1f1;
-            border-radius: 10px;
+        .product-card:hover .product-image {
+            transform: scale(1.05);
         }
         
-        ::-webkit-scrollbar-thumb {
-            background: #2c5f2d;
-            border-radius: 10px;
+        .image-placeholder {
+            width: 100%;
+            height: 180px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #f0fdf4, #dcfce7);
+            font-size: 48px;
         }
+        
+        .status-bridge {
+            position: fixed;
+            top: 80px;
+            right: 20px;
+            z-index: 1000;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-size: 12px;
+        }
+        .status-ok { background-color: #22c55e; color: white; }
+        .status-error { background-color: #ef4444; color: white; }
     </style>
 </head>
 <body class="bg-gray-100 min-h-screen" x-data="clientApp()" x-init="init()" x-cloak>
+
+    <!-- Statut du bridge -->
+    <div class="status-bridge" :class="bridgeAvailable ? 'status-ok' : 'status-error'" x-text="bridgeAvailable ? 'Bridge OK' : 'Bridge NON disponible'"></div>
 
     <!-- Toast Notification -->
     <div x-show="toast.show" x-transition class="toast-notification" :class="toast.type === 'success' ? 'bg-green-500' : 'bg-red-500'" style="display: none;">
@@ -186,12 +201,19 @@
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                 <template x-for="produit in filteredProduits" :key="produit.id">
                     <div class="bg-white rounded-xl shadow-md product-card overflow-hidden border border-gray-100">
-                        <!-- Image -->
-                        <div class="h-40 bg-gradient-to-br from-green-100 to-green-50 flex items-center justify-center relative">
-                            <span class="text-6xl">🥛</span>
+                        <!-- Image du produit -->
+                        <div class="relative overflow-hidden h-45 bg-gray-100">
+                            <img :src="produit.image_url || getDefaultImage(produit.nom)" 
+                                 class="product-image"
+                                 :alt="produit.nom"
+                                 @error="handleImageError(produit)">
                             <span x-show="produit.stock <= 0" 
                                   class="absolute top-2 right-2 bg-red-500 text-white text-xs px-2 py-1 rounded-full">
                                 Rupture
+                            </span>
+                            <span x-show="produit.stock > 0 && produit.stock < 10" 
+                                  class="absolute top-2 left-2 bg-yellow-500 text-white text-xs px-2 py-1 rounded-full">
+                                Stock faible
                             </span>
                         </div>
 
@@ -229,8 +251,8 @@
                             </div>
                             
                             <button x-show="produit.stock <= 0" disabled
-                                    class="w-full bg-gray-300 text-gray-500 py-2 rounded-lg cursor-not-allowed">
-                                <i class="fas fa-times-circle mr-2"></i> Indisponible
+                                    class="w-full bg-gray-300 text-gray-500 py-2 rounded-lg cursor-not-allowed flex items-center justify-center gap-2">
+                                <i class="fas fa-times-circle"></i> Indisponible
                             </button>
                         </div>
                     </div>
@@ -262,8 +284,9 @@
                     <template x-for="(item, index) in panier" :key="index">
                         <div class="p-5 flex items-center justify-between hover:bg-gray-50 transition">
                             <div class="flex items-center gap-4 flex-1">
-                                <div class="w-14 h-14 bg-green-100 rounded-lg flex items-center justify-center text-2xl">
-                                    🥛
+                                <div class="w-14 h-14 bg-green-100 rounded-lg flex items-center justify-center text-2xl overflow-hidden">
+                                    <img x-show="item.image_url" :src="item.image_url" class="w-full h-full object-cover" @error="item.image_url = null">
+                                    <span x-show="!item.image_url" class="text-2xl">🥛</span>
                                 </div>
                                 <div class="flex-1">
                                     <h3 class="font-bold text-gray-800" x-text="item.nom"></h3>
@@ -386,9 +409,9 @@
     <script>
     function clientApp() {
         return {
-            // État
             loading: false,
             activeTab: 'produits',
+            bridgeAvailable: false,
             client: { id: null, nom: 'Chargement...', email: '', telephone: '', adresse: '' },
             produits: [],
             panier: [],
@@ -399,13 +422,23 @@
             toast: { show: false, message: '', type: 'success' },
 
             init() {
-                console.log("🚀 Application client démarrée");
-                this.loadClientData();
-                this.loadProducts();
-                this.loadCommandes();
-                this.loadPanierFromStorage();
+                console.log("Application client demarree");
                 
-                // Observer les changements d'onglet
+                setTimeout(() => {
+                    if (typeof window.javaApp !== 'undefined') {
+                        console.log("✅ Bridge Java disponible");
+                        this.bridgeAvailable = true;
+                        this.loadClientData();
+                        this.loadProducts();
+                        this.loadCommandes();
+                        this.loadPanierFromStorage();
+                    } else {
+                        console.error("❌ Bridge Java NON disponible");
+                        this.bridgeAvailable = false;
+                        this.showToast('Bridge Java non disponible', 'error');
+                    }
+                }, 500);
+                
                 this.$watch('activeTab', (tab) => {
                     if (tab === 'commandes') {
                         this.loadCommandes();
@@ -419,42 +452,45 @@
             },
 
             loadClientData() {
-                console.log("📋 Chargement client...");
                 if (window.javaApp && window.javaApp.getCurrentUser) {
                     try {
                         const userJson = window.javaApp.getCurrentUser();
                         this.client = JSON.parse(userJson);
                         this.adresseLivraison = this.client.adresse || '';
-                        console.log("✅ Client chargé:", this.client.nom);
+                        console.log("Client charge:", this.client.nom);
                     } catch(e) { 
-                        console.error('❌ Erreur chargement client:', e);
+                        console.error('Erreur chargement client:', e);
                     }
                 }
             },
 
             loadProducts() {
-                console.log("📦 Chargement des produits...");
+                console.log("Chargement des produits...");
                 this.loading = true;
                 
                 if (window.javaApp && window.javaApp.getAllProducts) {
                     try {
                         const productsJson = window.javaApp.getAllProducts();
-                        console.log("📦 JSON reçu:", productsJson);
                         this.produits = JSON.parse(productsJson);
-                        // Ajouter la propriété quantite par défaut
+                        
+                        // Ajouter les images par défaut si nécessaire
                         this.produits.forEach(p => {
                             p.quantite = 1;
-                            p.categorie = p.categorie || this.getCategorieFromNom(p.nom);
+                            p.categorie = this.getCategorieFromNom(p.nom);
+                            if (!p.image_url || p.image_url === '') {
+                                p.image_url = this.getDefaultImage(p.nom);
+                            }
                         });
-                        console.log(`✅ ${this.produits.length} produits chargés`);
-                        this.showToast(`${this.produits.length} produits disponibles`, 'success');
+                        
+                        console.log(this.produits.length + " produits charges");
+                        this.showToast(this.produits.length + " produits disponibles", 'success');
                     } catch(e) { 
-                        console.error('❌ Erreur chargement produits:', e);
+                        console.error('Erreur chargement produits:', e);
                         this.produits = [];
                         this.showToast('Erreur chargement produits', 'error');
                     }
                 } else {
-                    console.warn("⚠️ getAllProducts non disponible");
+                    console.warn("getAllProducts non disponible");
                     this.produits = [];
                 }
                 this.loading = false;
@@ -469,16 +505,27 @@
                 return 'autre';
             },
 
+            getDefaultImage(nom) {
+                const n = nom.toLowerCase();
+                if (n.includes('lait')) return 'https://cdn-icons-png.flaticon.com/512/2965/2965307.png';
+                if (n.includes('fromage')) return 'https://cdn-icons-png.flaticon.com/512/1998/1998629.png';
+                if (n.includes('yaourt') || n.includes('thiakry')) return 'https://cdn-icons-png.flaticon.com/512/3082/3082382.png';
+                if (n.includes('beurre')) return 'https://cdn-icons-png.flaticon.com/512/2972/2972673.png';
+                return 'https://cdn-icons-png.flaticon.com/512/2965/2965307.png';
+            },
+
+            handleImageError(produit) {
+                produit.image_url = this.getDefaultImage(produit.nom);
+            },
+
             loadCommandes() {
-                console.log("📋 Chargement des commandes...");
                 if (window.javaApp && window.javaApp.getClientOrders) {
                     try {
                         const ordersJson = window.javaApp.getClientOrders();
-                        console.log("📋 Commandes JSON:", ordersJson);
                         this.commandes = JSON.parse(ordersJson);
-                        console.log(`✅ ${this.commandes.length} commandes chargées`);
+                        console.log(this.commandes.length + " commandes chargees");
                     } catch(e) { 
-                        console.error('❌ Erreur chargement commandes:', e);
+                        console.error('Erreur chargement commandes:', e);
                         this.commandes = [];
                     }
                 }
@@ -502,7 +549,7 @@
                     const matchSearch = p.nom.toLowerCase().includes(this.searchTerm.toLowerCase()) ||
                                        (p.description && p.description.toLowerCase().includes(this.searchTerm.toLowerCase()));
                     const matchCategory = !this.selectedCategory || p.categorie === this.selectedCategory;
-                    return matchSearch && matchCategory && p.disponible !== false;
+                    return matchSearch && matchCategory && p.disponible !== false && p.stock > 0;
                 });
             },
 
@@ -520,19 +567,20 @@
                         nom: produit.nom,
                         prixUnitaire: produit.prix,
                         unite: produit.unite,
-                        quantite: parseInt(produit.quantite)
+                        quantite: parseInt(produit.quantite),
+                        image_url: produit.image_url || null
                     });
                 }
                 produit.quantite = 1;
                 this.savePanierToStorage();
-                this.showToast(`${produit.nom} ajouté au panier !`, 'success');
+                this.showToast(`${produit.nom} ajoute au panier !`, 'success');
             },
 
             retirerDuPanier(index) {
                 const item = this.panier[index];
                 this.panier.splice(index, 1);
                 this.savePanierToStorage();
-                this.showToast(`${item.nom} retiré du panier`, 'success');
+                this.showToast(`${item.nom} retire du panier`, 'success');
             },
 
             validerCommande() {
@@ -550,20 +598,12 @@
                     return;
                 }
 
-                console.log("📦 Validation de la commande...");
-                
                 if (window.javaApp && window.javaApp.createOrder) {
                     try {
-                        const commandeData = {
-                            panier: this.panier,
-                            adresseLivraison: this.adresseLivraison,
-                            total: this.totalPanier
-                        };
-                        
                         const success = window.javaApp.createOrder(JSON.stringify(this.panier));
                         
                         if (success) {
-                            this.showToast('Commande validée avec succès !', 'success');
+                            this.showToast('Commande validee avec succes !', 'success');
                             this.panier = [];
                             this.savePanierToStorage();
                             this.activeTab = 'commandes';
@@ -576,8 +616,7 @@
                         this.showToast('Erreur technique', 'error');
                     }
                 } else {
-                    // Simulation pour test
-                    this.showToast('Commande validée (mode démonstration)', 'success');
+                    this.showToast('Mode demonstration: Commande validee', 'success');
                     this.panier = [];
                     this.savePanierToStorage();
                     this.activeTab = 'commandes';

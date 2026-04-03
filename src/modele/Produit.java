@@ -3,12 +3,8 @@ package modele;
 import javafx.beans.property.*;
 import java.time.LocalDateTime;
 
-/**
- * Représente un produit laitier en vente
- */
 public class Produit {
 
-    // Propriétés JavaFX pour le binding
     private final IntegerProperty id = new SimpleIntegerProperty();
     private final StringProperty nom = new SimpleStringProperty();
     private final StringProperty description = new SimpleStringProperty();
@@ -16,19 +12,15 @@ public class Produit {
     private final IntegerProperty stock = new SimpleIntegerProperty();
     private final StringProperty unite = new SimpleStringProperty();
     private final IntegerProperty producteurId = new SimpleIntegerProperty();
-    private final StringProperty producteurNom = new SimpleStringProperty(); // Ajout de la propriété producteurNom
+    private final StringProperty producteurNom = new SimpleStringProperty();
     private final StringProperty imageUrl = new SimpleStringProperty();
     private final ObjectProperty<LocalDateTime> dateCreation = new SimpleObjectProperty<>();
     private final BooleanProperty disponible = new SimpleBooleanProperty(true);
     
-    // Constructeur par défaut
     public Produit() {
         this.dateCreation.set(LocalDateTime.now());
     }
     
-    /**
-     * Constructeur principal
-     */
     public Produit(String nom, String description, double prix, int stock, String unite, int producteurId) {
         this();
         setNom(nom);
@@ -39,8 +31,7 @@ public class Produit {
         setProducteurId(producteurId);
     }
     
-    // ============ GETTERS ET SETTERS ============
-    
+    // Getters et Setters
     public int getId() { return id.get(); }
     public void setId(int value) { id.set(value); }
     public IntegerProperty idProperty() { return id; }
@@ -79,24 +70,15 @@ public class Produit {
     
     public LocalDateTime getDateCreation() { return dateCreation.get(); }
     public void setDateCreation(LocalDateTime value) { dateCreation.set(value); }
-    public ObjectProperty<LocalDateTime> dateCreationProperty() { return dateCreation; }
     
     public boolean isDisponible() { return disponible.get(); }
     public void setDisponible(boolean value) { disponible.set(value); }
     public BooleanProperty disponibleProperty() { return disponible; }
     
-    // ============ MÉTHODES MÉTIERS ============
-    
-    /**
-     * Vérifie si le produit peut être commandé en quantité demandée
-     */
     public boolean hasEnoughStock(int quantiteDemandee) {
         return isDisponible() && getStock() >= quantiteDemandee && quantiteDemandee > 0;
     }
     
-    /**
-     * Réserve du stock (diminue le stock disponible)
-     */
     public boolean reserveStock(int quantite) {
         if (hasEnoughStock(quantite)) {
             setStock(getStock() - quantite);
@@ -105,23 +87,14 @@ public class Produit {
         return false;
     }
     
-    /**
-     * Libère du stock (annulation de commande)
-     */
     public void releaseStock(int quantite) {
         setStock(getStock() + quantite);
     }
     
-    /**
-     * Calcule le prix total pour une quantité
-     */
     public double calculateTotal(int quantite) {
         return getPrix() * quantite;
     }
     
-    /**
-     * Conversion JSON pour JavaScript
-     */
     public String toJson() {
         return String.format(
                 "{\"id\":%d,\"nom\":\"%s\",\"description\":\"%s\",\"prix\":%.2f,\"stock\":%d,\"unite\":\"%s\",\"producteurId\":%d,\"producteurNom\":\"%s\",\"disponible\":%b,\"imageUrl\":\"%s\"}",
@@ -147,7 +120,7 @@ public class Produit {
     
     @Override
     public String toString() {
-        return String.format("Produit[%d] %s - %.2f€/%s (stock: %d)",
+        return String.format("Produit[%d] %s - %.2f FCFA/%s (stock: %d)",
                 getId(), getNom(), getPrix(), getUnite(), getStock());
     }
 }

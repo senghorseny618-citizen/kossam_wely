@@ -11,31 +11,66 @@
     
     <style>
         [x-cloak] { display: none !important; }
-        .toast { position: fixed; bottom: 20px; right: 20px; z-index: 1000; animation: slideIn 0.3s ease-out; }
-        @keyframes slideIn {
-            from { transform: translateX(100%); opacity: 0; }
-            to { transform: translateX(0); opacity: 1; }
+        .product-img {
+            width: 60px;
+            height: 60px;
+            object-fit: cover;
+            border-radius: 10px;
+            border: 2px solid #e2e8f0;
+            background-color: #f8f9fa;
         }
-        .btn-primary { background: linear-gradient(135deg, #2c5f2d, #7bad50); transition: all 0.3s ease; }
-        .btn-primary:hover { transform: scale(1.02); box-shadow: 0 10px 25px -5px rgba(44, 95, 45, 0.4); }
-        .loading { text-align: center; padding: 50px; font-size: 18px; color: #666; }
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+        .status-bridge {
+            position: fixed;
+            top: 80px;
+            right: 20px;
+            z-index: 1000;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-size: 12px;
+        }
+        .status-ok { background-color: #22c55e; color: white; }
+        .status-error { background-color: #ef4444; color: white; }
+        .drop-zone {
+            border: 2px dashed #cbd5e1;
+            border-radius: 15px;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background-color: #f8fafc;
+        }
+        .drop-zone.drag-over {
+            border-color: #2c5f2d;
+            background-color: #f0fdf4;
+        }
+        .image-preview {
+            width: 100px;
+            height: 100px;
+            object-fit: cover;
+            border-radius: 10px;
+            border: 2px solid #e2e8f0;
+        }
+        .btn-action {
+            transition: all 0.2s ease;
+        }
+        .btn-action:hover {
+            transform: scale(1.1);
+        }
     </style>
 </head>
-<body class="bg-gray-100 min-h-screen" x-data="producteurApp()" x-init="init()" x-cloak>
+<body class="bg-gray-100" x-data="producteurApp()" x-init="init()" x-cloak>
 
-    <!-- Loading initial -->
-    <div x-show="loading" class="loading">
-        <i class="fas fa-spinner fa-spin text-4xl text-green-600 mb-4"></i>
-        <p>Chargement de l'application...</p>
-    </div>
+    <!-- Statut du bridge -->
+    <div class="status-bridge" :class="bridgeAvailable ? 'status-ok' : 'status-error'" x-text="bridgeAvailable ? 'Bridge OK' : 'Bridge NON disponible'"></div>
 
-    <!-- Toast Notification -->
-    <div x-show="toast.show" x-transition class="toast" :class="toast.type === 'success' ? 'bg-green-500' : 'bg-red-500'" style="display: none;">
-        <div class="px-6 py-3 rounded-lg shadow-lg text-white flex items-center gap-2">
-            <i :class="toast.type === 'success' ? 'fas fa-check-circle' : 'fas fa-exclamation-circle'"></i>
-            <span x-text="toast.message"></span>
-        </div>
-    </div>
+    <!-- Toast -->
+    <div x-show="toast.show" x-transition class="toast" :class="toast.type === 'success' ? 'bg-green-500' : 'bg-red-500'" class="text-white px-4 py-2 rounded shadow-lg" x-text="toast.message"></div>
 
     <!-- Navigation -->
     <nav class="bg-white shadow-lg sticky top-0 z-50">
@@ -48,7 +83,7 @@
                 </div>
                 <div class="flex items-center gap-4">
                     <div class="text-right">
-                        <p class="text-sm font-medium text-gray-700" x-text="producteur.nom"></p>
+                        <p class="text-sm font-medium" x-text="producteur.nom || 'Chargement...'"></p>
                         <p class="text-xs text-gray-500" x-text="producteur.email"></p>
                     </div>
                     <button @click="logout()" class="text-red-500 hover:text-red-700">
@@ -61,202 +96,173 @@
 
     <div class="max-w-7xl mx-auto px-4 py-8">
         
-        <!-- Statut du bridge -->
+        <!-- Message d'erreur bridge -->
         <div x-show="!bridgeAvailable" class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
             <i class="fas fa-exclamation-triangle mr-2"></i>
-            <strong>Erreur de connexion :</strong> Le pont Java n'est pas disponible. 
-            Veuillez vérifier que l'application est correctement lancée.
+            <strong>Erreur de connexion :</strong> Le pont Java n'est pas disponible.
         </div>
-        
+
         <!-- Onglets -->
         <div class="flex gap-2 mb-6 border-b">
             <button @click="activeTab = 'dashboard'" 
                     :class="activeTab === 'dashboard' ? 'border-green-500 text-green-600' : 'border-transparent text-gray-500'"
                     class="px-4 py-2 border-b-2 font-medium transition">
-                📊 Dashboard
+                Dashboard
             </button>
             <button @click="activeTab = 'produits'"
                     :class="activeTab === 'produits' ? 'border-green-500 text-green-600' : 'border-transparent text-gray-500'"
                     class="px-4 py-2 border-b-2 font-medium transition">
-                📦 Mes Produits
+                Mes Produits
             </button>
             <button @click="activeTab = 'commandes'"
                     :class="activeTab === 'commandes' ? 'border-green-500 text-green-600' : 'border-transparent text-gray-500'"
                     class="px-4 py-2 border-b-2 font-medium transition">
-                🚚 Commandes
+                Commandes
             </button>
         </div>
 
         <!-- DASHBOARD -->
-        <div x-show="activeTab === 'dashboard'" x-cloak>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div x-show="activeTab === 'dashboard'">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div class="bg-white rounded-xl shadow p-6">
-                    <div class="flex items-center justify-between">
+                    <div class="flex justify-between items-center">
                         <div>
-                            <p class="text-gray-500 text-sm">Total Produits</p>
+                            <p class="text-gray-500">Total Produits</p>
                             <p class="text-3xl font-bold text-green-600" x-text="stats.totalProduits">0</p>
                         </div>
                         <i class="fas fa-box text-4xl text-green-200"></i>
                     </div>
                 </div>
                 <div class="bg-white rounded-xl shadow p-6">
-                    <div class="flex items-center justify-between">
+                    <div class="flex justify-between items-center">
                         <div>
-                            <p class="text-gray-500 text-sm">Commandes reçues</p>
+                            <p class="text-gray-500">Commandes reçues</p>
                             <p class="text-3xl font-bold text-blue-600" x-text="stats.totalCommandes">0</p>
                         </div>
                         <i class="fas fa-shopping-cart text-4xl text-blue-200"></i>
                     </div>
                 </div>
                 <div class="bg-white rounded-xl shadow p-6">
-                    <div class="flex items-center justify-between">
+                    <div class="flex justify-between items-center">
                         <div>
-                            <p class="text-gray-500 text-sm">Chiffre d'affaires</p>
+                            <p class="text-gray-500">Chiffre d'affaires</p>
                             <p class="text-3xl font-bold text-yellow-600" x-text="formatPrice(stats.ca)">0</p>
                         </div>
                         <i class="fas fa-chart-line text-4xl text-yellow-200"></i>
                     </div>
                 </div>
             </div>
-
-            <div class="bg-white rounded-xl shadow p-6">
-                <h3 class="font-bold text-lg mb-4">📦 Dernières commandes</h3>
-                <div class="space-y-3">
-                    <template x-for="commande in recentesCommandes" :key="commande.id_commande">
-                        <div class="border-b pb-3">
-                            <div class="flex justify-between">
-                                <span class="font-medium">Commande #<span x-text="commande.id_commande"></span></span>
-                                <span class="text-sm text-gray-500" x-text="formatDate(commande.date_commande)"></span>
-                            </div>
-                            <div class="flex justify-between text-sm mt-1">
-                                <span>Client: <span x-text="commande.client_nom"></span></span>
-                                <span class="font-bold text-green-600" x-text="formatPrice(commande.montant_total)"></span>
-                            </div>
-                        </div>
-                    </template>
-                    <div x-show="recentesCommandes.length === 0" class="text-center text-gray-500 py-4">
-                        Aucune commande récente
-                    </div>
-                </div>
-            </div>
         </div>
 
         <!-- PRODUITS -->
-        <div x-show="activeTab === 'produits'" x-cloak>
+        <div x-show="activeTab === 'produits'">
             <div class="flex justify-between items-center mb-6">
                 <h2 class="text-2xl font-bold text-gray-800">Mes Produits</h2>
-                <button @click="openProductModal()" class="btn-primary text-white px-5 py-2 rounded-lg font-semibold shadow-md transition">
+                <button @click="openProductModal()" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700">
                     <i class="fas fa-plus mr-2"></i> Ajouter un produit
                 </button>
             </div>
 
-            <!-- Filtres -->
+            <!-- Barre de recherche -->
             <div class="bg-white rounded-xl shadow p-4 mb-6">
-                <div class="flex gap-4">
-                    <input type="text" x-model="searchProduct" placeholder="Rechercher un produit..."
-                           class="flex-1 px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500">
-                    <select x-model="statusFilter" class="px-4 py-2 border rounded-lg">
-                        <option value="">Tous</option>
-                        <option value="true">Disponibles</option>
-                        <option value="false">Indisponibles</option>
-                    </select>
-                    <button @click="loadProducts" class="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600">
-                        <i class="fas fa-sync-alt"></i> Rafraîchir
-                    </button>
-                </div>
+                <input type="text" x-model="searchProduct" placeholder="Rechercher un produit..." 
+                       class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500">
             </div>
 
-            <!-- Liste des produits -->
+            <!-- Tableau des produits -->
             <div class="bg-white rounded-xl shadow overflow-hidden">
-                <table class="w-full">
-                    <thead class="bg-gray-50 border-b">
-                        <tr>
-                            <th class="px-6 py-3 text-left text-sm font-medium text-gray-500">ID</th>
-                            <th class="px-6 py-3 text-left text-sm font-medium text-gray-500">Produit</th>
-                            <th class="px-6 py-3 text-left text-sm font-medium text-gray-500">Prix</th>
-                            <th class="px-6 py-3 text-left text-sm font-medium text-gray-500">Stock</th>
-                            <th class="px-6 py-3 text-left text-sm font-medium text-gray-500">Statut</th>
-                            <th class="px-6 py-3 text-left text-sm font-medium text-gray-500">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <template x-for="produit in filteredProducts" :key="produit.id_produit">
-                            <tr class="border-b hover:bg-gray-50">
-                                <td class="px-6 py-4 text-sm" x-text="produit.id_produit"></td>
-                                <td class="px-6 py-4">
-                                    <div>
+                <div x-show="loadingProducts" class="text-center py-8">
+                    <i class="fas fa-spinner fa-spin text-2xl text-green-600"></i>
+                    <p class="mt-2 text-gray-500">Chargement des produits...</p>
+                </div>
+                <div x-show="!loadingProducts">
+                    <table class="w-full">
+                        <thead class="bg-gray-50 border-b">
+                            <tr>
+                                <th class="px-4 py-3 text-left text-sm font-medium">Image</th>
+                                <th class="px-4 py-3 text-left text-sm font-medium">ID</th>
+                                <th class="px-4 py-3 text-left text-sm font-medium">Produit</th>
+                                <th class="px-4 py-3 text-left text-sm font-medium">Prix</th>
+                                <th class="px-4 py-3 text-left text-sm font-medium">Stock</th>
+                                <th class="px-4 py-3 text-left text-sm font-medium">Unité</th>
+                                <th class="px-4 py-3 text-left text-sm font-medium">Statut</th>
+                                <th class="px-4 py-3 text-left text-sm font-medium">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <template x-for="produit in filteredProducts" :key="produit.id_produit">
+                                <tr class="border-b hover:bg-gray-50">
+                                    <td class="px-4 py-3">
+                                        <img :src="produit.image_url" 
+                                             class="product-img"
+                                             @error="produit.image_url = getDefaultImage(produit.nom_produit)"
+                                             :alt="produit.nom_produit">
+                                    </td>
+                                    <td class="px-4 py-3 text-sm" x-text="produit.id_produit"></td>
+                                    <td class="px-4 py-3">
                                         <p class="font-medium" x-text="produit.nom_produit"></p>
-                                        <p class="text-xs text-gray-500" x-text="produit.description ? produit.description.substring(0, 50) : ''"></p>
-                                    </div>
-                                </td>
-                                <td class="px-6 py-4">
-                                    <span class="font-semibold text-green-600" x-text="formatPrice(produit.prix)"></span>
-                                    <span class="text-xs text-gray-500" x-text="'/' + produit.unite"></span>
-                                </td>
-                                <td class="px-6 py-4 text-sm" x-text="produit.stock"></td>
-                                <td class="px-6 py-4">
-                                    <span :class="produit.disponible ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'" 
-                                          class="px-2 py-1 rounded-full text-xs font-medium">
-                                        <span x-text="produit.disponible ? 'Disponible' : 'Indisponible'"></span>
-                                    </span>
-                                </td>
-                                <td class="px-6 py-4">
-                                    <div class="flex gap-2">
-                                        <button @click="toggleProductStatus(produit)" 
-                                                :title="produit.disponible ? 'Désactiver' : 'Activer'"
-                                                class="text-yellow-600 hover:text-yellow-800">
-                                            <i :class="produit.disponible ? 'fas fa-eye-slash' : 'fas fa-eye'"></i>
-                                        </button>
-                                        <button @click="editProduct(produit)" title="Modifier"
-                                                class="text-blue-600 hover:text-blue-800">
+                                        <p class="text-xs text-gray-500" x-text="produit.description?.substring(0, 50) || ''"></p>
+                                    </td>
+                                    <td class="px-4 py-3 font-semibold text-green-600" x-text="formatPrice(produit.prix)"></td>
+                                    <td class="px-4 py-3 text-sm" x-text="produit.stock"></td>
+                                    <td class="px-4 py-3 text-sm" x-text="produit.unite"></td>
+                                    <td class="px-4 py-3">
+                                        <span :class="produit.disponible ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'" 
+                                              class="px-2 py-1 rounded-full text-xs font-medium">
+                                            <span x-text="produit.disponible ? 'Disponible' : 'Indisponible'"></span>
+                                        </span>
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <button @click="editProduct(produit)" class="text-blue-600 hover:text-blue-800 mr-2 btn-action" title="Modifier">
                                             <i class="fas fa-edit"></i>
                                         </button>
-                                        <button @click="deleteProduct(produit)" title="Supprimer"
-                                                class="text-red-600 hover:text-red-800">
+                                        <button @click="deleteProduct(produit)" class="text-red-600 hover:text-red-800 btn-action" title="Supprimer">
                                             <i class="fas fa-trash"></i>
                                         </button>
-                                    </div>
+                                    </td>
+                                </tr>
+                            </template>
+                            <tr x-show="filteredProducts.length === 0">
+                                <td colspan="8" class="px-4 py-8 text-center text-gray-500">
+                                    Aucun produit trouvé
                                 </td>
                             </tr>
-                        </template>
-                        <tr x-show="filteredProducts.length === 0">
-                            <td colspan="6" class="px-6 py-8 text-center text-gray-500">
-                                Aucun produit trouvé
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
 
         <!-- COMMANDES -->
-        <div x-show="activeTab === 'commandes'" x-cloak>
+        <div x-show="activeTab === 'commandes'">
             <h2 class="text-2xl font-bold text-gray-800 mb-6">Commandes reçues</h2>
-            
-            <div class="space-y-4">
+            <div x-show="loadingOrders" class="text-center py-8">
+                <i class="fas fa-spinner fa-spin text-2xl text-green-600"></i>
+                <p class="mt-2 text-gray-500">Chargement des commandes...</p>
+            </div>
+            <div x-show="!loadingOrders" class="space-y-4">
                 <template x-for="commande in commandesRecues" :key="commande.id_commande">
                     <div class="bg-white rounded-xl shadow p-6">
-                        <div class="flex justify-between items-start mb-4">
+                        <div class="flex justify-between items-start">
                             <div>
                                 <h3 class="font-bold text-lg">Commande #<span x-text="commande.id_commande"></span></h3>
                                 <p class="text-sm text-gray-500" x-text="formatDate(commande.date_commande)"></p>
-                                <p class="text-sm mt-1">Client: <span x-text="commande.client_nom"></span></p>
+                                <p class="text-sm mt-1">Client: <span class="font-medium" x-text="commande.client_nom"></span></p>
                             </div>
-                            <div class="flex items-center gap-4">
-                                <select x-model="commande.statut" @change="updateOrderStatus(commande)"
-                                        class="px-3 py-1 border rounded-lg text-sm">
-                                    <option value="PANIER">🛒 Panier</option>
-                                    <option value="PAYEE">💰 Payée</option>
-                                    <option value="EN_PREPARATION">👨‍🍳 En préparation</option>
-                                    <option value="EXPEDIEE">🚚 Expédiée</option>
-                                    <option value="LIVREE">✅ Livrée</option>
-                                    <option value="ANNULEE">❌ Annulée</option>
+                            <div class="text-right">
+                                <p class="text-2xl font-bold text-green-600" x-text="formatPrice(commande.montant_total)"></p>
+                                <select x-model="commande.statut" @change="updateOrderStatus(commande)" 
+                                        class="mt-2 px-3 py-1 border rounded-lg text-sm">
+                                    <option value="PAYEE">Payée</option>
+                                    <option value="EN_PREPARATION">En préparation</option>
+                                    <option value="EXPEDIEE">Expédiée</option>
+                                    <option value="LIVREE">Livrée</option>
+                                    <option value="ANNULEE">Annulée</option>
                                 </select>
-                                <span class="text-2xl font-bold text-green-600" x-text="formatPrice(commande.montant_total)"></span>
                             </div>
                         </div>
-                        <div class="border-t pt-4">
-                            <p class="font-semibold mb-2">Détails :</p>
+                        <div class="border-t mt-4 pt-4">
+                            <p class="font-semibold mb-2">Détails:</p>
                             <div class="space-y-1">
                                 <template x-for="detail in commande.details" :key="detail.id_detail">
                                     <div class="flex justify-between text-sm">
@@ -268,48 +274,53 @@
                         </div>
                     </div>
                 </template>
-                <div x-show="commandesRecues.length === 0" class="text-center text-gray-500 py-12 bg-white rounded-xl">
-                    Aucune commande reçue
+                <div x-show="commandesRecues.length === 0" class="text-center py-12 bg-white rounded-xl">
+                    <i class="fas fa-inbox text-4xl text-gray-300 mb-2"></i>
+                    <p class="text-gray-500">Aucune commande reçue</p>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Modal Produit -->
+    <!-- Modal Produit avec upload d'image -->
     <div x-show="showProductModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" x-cloak>
-        <div class="bg-white rounded-xl max-w-md w-full mx-4 p-6" @click.away="showProductModal = false">
+        <div class="bg-white rounded-xl max-w-md w-full p-6 max-h-[90vh] overflow-y-auto">
             <div class="flex justify-between items-center mb-4">
                 <h3 class="text-xl font-bold" x-text="editingProduct ? 'Modifier le produit' : 'Ajouter un produit'"></h3>
                 <button @click="showProductModal = false" class="text-gray-400 hover:text-gray-600">
                     <i class="fas fa-times text-xl"></i>
                 </button>
             </div>
+            
             <form @submit.prevent="saveProduct">
                 <div class="space-y-4">
                     <div>
-                        <label class="block text-sm font-medium mb-1">Nom du produit *</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Nom du produit *</label>
                         <input type="text" x-model="productForm.nom_produit" required
                                class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500">
                     </div>
+                    
                     <div>
-                        <label class="block text-sm font-medium mb-1">Description</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
                         <textarea x-model="productForm.description" rows="3"
                                   class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"></textarea>
                     </div>
+                    
                     <div class="grid grid-cols-2 gap-3">
                         <div>
-                            <label class="block text-sm font-medium mb-1">Prix (FCFA) *</label>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Prix (FCFA) *</label>
                             <input type="number" step="1" x-model="productForm.prix" required
                                    class="w-full px-3 py-2 border rounded-lg">
                         </div>
                         <div>
-                            <label class="block text-sm font-medium mb-1">Stock *</label>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Stock *</label>
                             <input type="number" x-model="productForm.stock" required
                                    class="w-full px-3 py-2 border rounded-lg">
                         </div>
                     </div>
+                    
                     <div>
-                        <label class="block text-sm font-medium mb-1">Unité</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Unité</label>
                         <select x-model="productForm.unite" class="w-full px-3 py-2 border rounded-lg">
                             <option value="litre">Litre</option>
                             <option value="kg">Kilogramme</option>
@@ -318,7 +329,22 @@
                             <option value="pot">Pot</option>
                         </select>
                     </div>
+                    
+                    <!-- URL de l'image -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">URL de l'image</label>
+                        <input type="text" x-model="productForm.image_url" placeholder="https://..." 
+                               class="w-full px-3 py-2 border rounded-lg">
+                        <p class="text-xs text-gray-400 mt-1">Laissez vide pour une image automatique</p>
+                    </div>
+                    
+                    <!-- Preview de l'image -->
+                    <div x-show="productForm.image_url" class="mt-2">
+                        <p class="text-sm text-gray-600 mb-1">Aperçu:</p>
+                        <img :src="productForm.image_url" class="image-preview" @error="productForm.image_url = ''">
+                    </div>
                 </div>
+                
                 <div class="flex justify-end gap-3 mt-6">
                     <button type="button" @click="showProductModal = false" class="px-4 py-2 border rounded-lg">Annuler</button>
                     <button type="submit" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
@@ -333,41 +359,57 @@
     function producteurApp() {
         return {
             // État
-            loading: true,
-            bridgeAvailable: false,
             activeTab: 'dashboard',
+            loadingProducts: false,
+            loadingOrders: false,
+            bridgeAvailable: false,
+            dragOver: false,
             
-            producteur: { id: null, nom: 'Chargement...', email: '', telephone: '', adresse: '' },
+            // Données
+            producteur: { id: null, nom: '', email: '', telephone: '' },
             mesProduits: [],
             commandesRecues: [],
             stats: { totalProduits: 0, totalCommandes: 0, ca: 0 },
-            recentesCommandes: [],
+            
+            // Filtres
             searchProduct: '',
-            statusFilter: '',
+            
+            // Modal
             showProductModal: false,
             editingProduct: null,
-            productForm: { nom_produit: '', description: '', prix: 0, stock: 0, unite: 'litre' },
+            productForm: { 
+                nom_produit: '', 
+                description: '', 
+                prix: 0, 
+                stock: 0, 
+                unite: 'litre',
+                image_url: ''
+            },
+            
+            // Notification
             toast: { show: false, message: '', type: 'success' },
 
             init() {
                 console.log("🚀 Application producteur démarrée");
                 
-                // Vérifier si le bridge Java est disponible
                 setTimeout(() => {
                     if (typeof window.javaApp !== 'undefined') {
                         console.log("✅ Bridge Java disponible");
                         this.bridgeAvailable = true;
-                        this.loading = false;
-                        this.loadProducteurData();
-                        this.loadProducts();
-                        this.loadOrders();
+                        this.loadData();
                     } else {
                         console.error("❌ Bridge Java NON disponible");
                         this.bridgeAvailable = false;
-                        this.loading = false;
-                        this.showToast('javaApp non disponible - Vérifiez la connexion Java', 'error');
+                        this.showToast('Bridge Java non disponible', 'error');
                     }
                 }, 500);
+            },
+            
+            loadData() {
+                this.loadProducteurData();
+                this.loadProducts();
+                this.loadOrders();
+                this.loadStats();
             },
 
             showToast(message, type = 'success') {
@@ -376,76 +418,109 @@
             },
 
             loadProducteurData() {
-                console.log("📋 Chargement producteur...");
                 if (window.javaApp && window.javaApp.getCurrentUser) {
                     try {
                         const userJson = window.javaApp.getCurrentUser();
-                        console.log("📋 JSON reçu:", userJson);
-                        if (userJson && userJson !== '{}') {
-                            this.producteur = JSON.parse(userJson);
-                            console.log("✅ Producteur chargé:", this.producteur.nom);
-                        } else {
-                            console.warn("⚠️ Aucun utilisateur connecté");
-                        }
+                        this.producteur = JSON.parse(userJson);
+                        console.log("✅ Producteur chargé:", this.producteur);
                     } catch(e) { 
-                        console.error('❌ Erreur:', e);
-                        this.showToast('Erreur chargement profil', 'error');
+                        console.error('Erreur:', e);
                     }
-                } else {
-                    console.warn("⚠️ javaApp.getCurrentUser non disponible");
                 }
             },
 
             loadProducts() {
                 console.log("📦 Chargement produits...");
+                this.loadingProducts = true;
+                
                 if (window.javaApp && window.javaApp.getMyProducts) {
                     try {
                         const productsJson = window.javaApp.getMyProducts();
-                        console.log("📦 JSON reçu:", productsJson);
                         this.mesProduits = JSON.parse(productsJson);
+                        
+                        // Ajouter les images par défaut si nécessaire
+                        this.mesProduits.forEach(p => {
+                            if (!p.image_url || p.image_url === '') {
+                                p.image_url = this.getDefaultImage(p.nom_produit);
+                            }
+                        });
+                        
                         this.stats.totalProduits = this.mesProduits.length;
                         console.log(`✅ ${this.mesProduits.length} produits chargés`);
-                        this.showToast(`${this.mesProduits.length} produits chargés`, 'success');
                     } catch(e) { 
-                        console.error('❌ Erreur chargement produits:', e);
+                        console.error('❌ Erreur:', e);
                         this.showToast('Erreur chargement produits', 'error');
                         this.mesProduits = [];
                     }
                 } else {
-                    console.warn("⚠️ javaApp.getMyProducts non disponible");
+                    console.error("❌ getMyProducts non disponible");
                     this.mesProduits = [];
                 }
+                this.loadingProducts = false;
             },
 
             loadOrders() {
                 console.log("🚚 Chargement commandes...");
+                this.loadingOrders = true;
+                
                 if (window.javaApp && window.javaApp.getMyOrders) {
                     try {
                         const ordersJson = window.javaApp.getMyOrders();
-                        console.log("🚚 JSON reçu:", ordersJson);
                         this.commandesRecues = JSON.parse(ordersJson);
                         this.stats.totalCommandes = this.commandesRecues.length;
-                        this.recentesCommandes = [...this.commandesRecues].slice(0, 5);
-                        this.stats.ca = this.commandesRecues.reduce((sum, cmd) => sum + (cmd.montant_total || 0), 0);
                         console.log(`✅ ${this.commandesRecues.length} commandes chargées`);
                     } catch(e) { 
-                        console.error('❌ Erreur chargement commandes:', e);
+                        console.error('❌ Erreur:', e);
                         this.commandesRecues = [];
+                    }
+                }
+                this.loadingOrders = false;
+            },
+
+            loadStats() {
+                if (window.javaApp && window.javaApp.getMyStats) {
+                    try {
+                        const statsJson = window.javaApp.getMyStats();
+                        const stats = JSON.parse(statsJson);
+                        this.stats.ca = stats.ca || 0;
+                    } catch(e) { 
+                        console.error('❌ Erreur:', e);
                     }
                 }
             },
 
             get filteredProducts() {
-                return this.mesProduits.filter(p => {
-                    const matchSearch = (p.nom_produit || '').toLowerCase().includes(this.searchProduct.toLowerCase());
-                    const matchStatus = !this.statusFilter || String(p.disponible) === this.statusFilter;
-                    return matchSearch && matchStatus;
-                });
+                if (!this.searchProduct) return this.mesProduits;
+                return this.mesProduits.filter(p => 
+                    p.nom_produit && p.nom_produit.toLowerCase().includes(this.searchProduct.toLowerCase())
+                );
+            },
+
+            // Fonction pour obtenir l'image par défaut
+            getDefaultImage(nomProduit) {
+                const nom = nomProduit.toLowerCase();
+                if (nom.includes('lait')) {
+                    return 'https://cdn-icons-png.flaticon.com/512/2965/2965307.png';
+                } else if (nom.includes('fromage')) {
+                    return 'https://cdn-icons-png.flaticon.com/512/1998/1998629.png';
+                } else if (nom.includes('yaourt') || nom.includes('thiakry')) {
+                    return 'https://cdn-icons-png.flaticon.com/512/3082/3082382.png';
+                } else if (nom.includes('beurre')) {
+                    return 'https://cdn-icons-png.flaticon.com/512/2972/2972673.png';
+                }
+                return 'https://cdn-icons-png.flaticon.com/512/2965/2965307.png';
             },
 
             openProductModal() {
                 this.editingProduct = null;
-                this.productForm = { nom_produit: '', description: '', prix: 0, stock: 0, unite: 'litre' };
+                this.productForm = { 
+                    nom_produit: '', 
+                    description: '', 
+                    prix: 0, 
+                    stock: 0, 
+                    unite: 'litre',
+                    image_url: ''
+                };
                 this.showProductModal = true;
             },
 
@@ -456,7 +531,8 @@
                     description: produit.description || '', 
                     prix: produit.prix, 
                     stock: produit.stock, 
-                    unite: produit.unite 
+                    unite: produit.unite,
+                    image_url: produit.image_url || ''
                 };
                 this.showProductModal = true;
             },
@@ -474,12 +550,18 @@
                     return;
                 }
 
+                let imageUrl = this.productForm.image_url;
+                if (!imageUrl || imageUrl === '') {
+                    imageUrl = this.getDefaultImage(this.productForm.nom_produit);
+                }
+
                 const produitData = {
                     nom_produit: this.productForm.nom_produit,
                     description: this.productForm.description || "",
                     prix: parseFloat(this.productForm.prix),
                     stock: parseInt(this.productForm.stock),
-                    unite: this.productForm.unite
+                    unite: this.productForm.unite,
+                    image_url: imageUrl
                 };
 
                 console.log("📦 Données envoyées:", produitData);
@@ -487,30 +569,28 @@
                 let result;
                 if (this.editingProduct) {
                     produitData.id_produit = this.editingProduct.id_produit;
-                    result = window.javaApp.updateProduct(JSON.stringify(produitData));
+                    if (window.javaApp.updateProduct) {
+                        result = window.javaApp.updateProduct(JSON.stringify(produitData));
+                    } else {
+                        this.showToast('updateProduct non disponible', 'error');
+                        return;
+                    }
                 } else {
-                    result = window.javaApp.createProduct(JSON.stringify(produitData));
+                    if (window.javaApp.createProduct) {
+                        result = window.javaApp.createProduct(JSON.stringify(produitData));
+                    } else {
+                        this.showToast('createProduct non disponible', 'error');
+                        return;
+                    }
                 }
 
                 if (result) {
                     this.showToast(this.editingProduct ? 'Produit modifié !' : 'Produit ajouté !', 'success');
                     this.showProductModal = false;
                     this.loadProducts();
+                    this.loadStats();
                 } else {
                     this.showToast('Erreur lors de l\'opération', 'error');
-                }
-            },
-
-            toggleProductStatus(produit) {
-                if (window.javaApp && window.javaApp.toggleProductStatus) {
-                    const nouveauStatut = !produit.disponible;
-                    if (window.javaApp.toggleProductStatus(produit.id_produit, nouveauStatut)) {
-                        produit.disponible = nouveauStatut;
-                        this.showToast(`Produit ${nouveauStatut ? 'activé' : 'désactivé'}`, 'success');
-                        this.loadProducts();
-                    } else {
-                        this.showToast('Erreur changement statut', 'error');
-                    }
                 }
             },
 
@@ -520,6 +600,7 @@
                         if (window.javaApp.deleteProduct(produit.id_produit)) {
                             this.showToast('Produit supprimé', 'success');
                             this.loadProducts();
+                            this.loadStats();
                         } else {
                             this.showToast('Erreur suppression', 'error');
                         }
@@ -529,8 +610,13 @@
 
             updateOrderStatus(commande) {
                 if (window.javaApp && window.javaApp.updateOrderStatus) {
-                    window.javaApp.updateOrderStatus(commande.id_commande, commande.statut);
-                    this.showToast('Statut mis à jour', 'success');
+                    if (window.javaApp.updateOrderStatus(commande.id_commande, commande.statut)) {
+                        this.showToast('Statut mis à jour', 'success');
+                        this.loadOrders();
+                        this.loadStats();
+                    } else {
+                        this.showToast('Erreur mise à jour', 'error');
+                    }
                 }
             },
 
@@ -542,9 +628,7 @@
             formatDate(dateStr) {
                 if (!dateStr) return '';
                 try {
-                    const date = new Date(dateStr);
-                    if (isNaN(date.getTime())) return dateStr;
-                    return date.toLocaleDateString('fr-FR', {
+                    return new Date(dateStr).toLocaleDateString('fr-FR', {
                         day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit'
                     });
                 } catch(e) {
